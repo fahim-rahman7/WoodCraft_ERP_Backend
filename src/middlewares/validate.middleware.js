@@ -1,16 +1,32 @@
-import { z } from 'zod';
-
-export const validate = (schema) => (req, res, next) => {
+export const validate = (schema) => async (req, res, next) => {
   try {
-    // Overwrite req.body with clean, parsed, and sanitized data
-    req.body = schema.parse(req.body);
+    req.body = await schema.parseAsync(req.body);
     next();
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error.name === 'ZodError') {
+      const formattedErrors = error.issues.map((issue) => {
+        const field = issue.path.join('.');
+        let message = issue.message;
+
+        // Zod-এর ডিফল্ট expected/received মেসেজকে ক্লিন মেসেজে কনভার্ট করা
+        if (
+          message.toLowerCase().includes('expected string') ||
+          message.toLowerCase().includes('received undefined') ||
+          message === 'Required'
+        ) {
+          message = `${field} is required`;
+        }
+
+        return {
+          field,
+          message,
+        };
+      });
+
       return res.status(400).json({
         success: false,
-        message: error.issues?.[0]?.message || 'Validation error',
-        // errors: z.treeifyError(error),
+        message: formattedErrors[0]?.message || 'Validation failed',
+        errors: formattedErrors,
       });
     }
     next(error);
