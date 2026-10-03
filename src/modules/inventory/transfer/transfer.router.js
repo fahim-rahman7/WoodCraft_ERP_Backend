@@ -7,16 +7,18 @@
 
 import { Router } from 'express';
 import { protect } from '../../../middlewares/auth.middleware.js';
-import { requireOrgContext } from '../../../middlewares/org.middleware.js';
+import { checkOrgRole, requireOrgContext } from '../../../middlewares/org.middleware.js';
+import { validate } from '../../../middlewares/validate.middleware.js';
 import * as transferController from './transfer.controller.js';
+import { createTransferSchema } from './transfer.validation.js';
 
 const router = Router();
 
-router.use(protect, requireOrgContext);
+router.use(protect, requireOrgContext, checkOrgRole('OWNER', 'MANAGER'));
 
 
 // ------create new transfer
-router.post('/', transferController.createNewTransfer);
+router.post('/', validate(createTransferSchema), transferController.createNewTransfer);
 
 // -----transfer list with filter
 
