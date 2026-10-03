@@ -74,3 +74,49 @@ export const createNewTransferServices = async(organizationId, userId, payload)=
 
     return transfer
 }
+
+
+
+// -----get all transfer with filter
+export const getAllTransferServices = async(organizationId, query)=>{
+
+    const limit = query.limit ? Number(query.limit) : 10;
+	const page = query.page ? Number(query.page) : 1;
+	const skip = (page - 1) * limit;
+    const sortBy = query.sortBy || "createdAt"
+    const sortOrder = query.sortOrder === "asc" ? 1 : -1
+
+    // ----filter object
+    const filter = { organizationId }
+
+    // -----filter object data add
+    if(query.status) filter.status = query.status
+    if(query.fromWarehouseId) filter.fromWarehouseId = query.fromWarehouseId
+    if(query.toWarehouseId) filter.toWarehouseId = query.toWarehouseId
+    if(query.itemId) filter["items.itemId"] = query.itemId
+    
+
+
+    const transfers = await Transfer.find(filter)
+        .populate("fromWarehouseId", "name code")
+        .populate("toWarehouseId", "name code")
+        .populate("items.itemId", "name sku unit")
+        .populate("requestedBy", "name email")
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit)
+
+    
+    const totalTransferCount = await Transfer.countDocuments(filter)
+    const totalPage = Math.ceil(totalTransferCount/limit)
+
+    return {
+        data: transfers,
+        meta:{
+            page, 
+            limit, 
+            totalPage,
+            totalTransferCount
+        }
+    }
+}

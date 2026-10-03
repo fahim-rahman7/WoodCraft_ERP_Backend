@@ -21,6 +21,7 @@ router.use(protect, requireOrgContext, checkOrgRole('OWNER', 'MANAGER'));
 router.post('/', validate(createTransferSchema), transferController.createNewTransfer);
 
 // -----transfer list with filter
+router.get('/', transferController.getAllTransfer);
 
 // ------single transfer with id
 
