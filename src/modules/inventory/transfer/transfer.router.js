@@ -24,6 +24,7 @@ router.post('/', validate(createTransferSchema), transferController.createNewTra
 router.get('/', transferController.getAllTransfer);
 
 // ------single transfer with id
+router.get('/:id', transferController.getSingleTransfer);
 
 // ------transfer approve
 

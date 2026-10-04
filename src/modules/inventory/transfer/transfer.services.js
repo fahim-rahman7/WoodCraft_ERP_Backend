@@ -120,3 +120,23 @@ export const getAllTransferServices = async(organizationId, query)=>{
         }
     }
 }
+
+
+// -----get single transfer
+export const getSingleTransferServices = async(trnasferId, organizationId)=>{
+
+    // ----getting transfer data
+    const transferData = await Transfer.findOne({
+        _id: trnasferId,
+        organizationId
+    }).populate("fromWarehouseId", "name code")
+        .populate("toWarehouseId", "name code")
+        .populate("items.itemId", "name sku unit")
+        .populate("requestedBy", "name email")
+
+    if(!transferData){
+        throw new AppError("No data found", 404)
+    }
+
+    return transferData
+}
