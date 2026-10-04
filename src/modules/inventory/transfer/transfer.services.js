@@ -4,7 +4,7 @@ import { Item } from "../item/item.model.js"
 import { Stock } from "../stock/stock.model.js"
 import { Warehouse } from "../warehouse/warehouse.model.js"
 import { Transfer } from "./transfer.model.js"
-import { reserveStock } from "../stock/stock.service.js"
+import { releaseReservedStock, reserveStock, transferStock } from "../stock/stock.service.js"
 
 
 // -----create new transfer
@@ -193,4 +193,70 @@ export const approveTransferServices = async(trnasferId, organizationId, userId)
     })
 
     return approveTransfer
+}
+
+
+// ------complete transfer
+export const completeTransferServices = async(trnasferId, organizationId, userId)=>{
+
+    // ------applying logic inside of a transaction
+    const completeTransfer = await mongoose.connection.transaction(async(session)=>{
+
+        // ----getting transfer data
+        const transferData = await Transfer.findOne({
+            _id: trnasferId,
+            organizationId
+        }).session(session)
+    
+        if(!transferData){
+            throw new AppError("No data found", 404)
+        }
+
+
+        if(transferData.status !== "APPROVED"){
+            throw new AppError(`Only Approved transfer can be Completed. Current status: ${transferData.status}`, 400)
+        }
+
+        // ------releasing reserved stock
+        for(const item of transferData.items){
+            await releaseReservedStock({
+                organizationId,
+                warehouseId: transferData.fromWarehouseId,
+                itemId: item.itemId,
+                quantity: item.quantity,
+                performedBy: userId,
+                referenceType: 'STOCK_TRANSFER',
+                referenceId: transferData._id,
+                remarks: `Reserved Stock Released for transfer ${transferData.transferNumber}`
+            }, session)
+        }
+
+
+        // -----transfering stock from warehouse to warehouse
+        for(const item of transferData.items){
+            await transferStock({
+                organizationId,
+                fromWarehouseId: transferData.fromWarehouseId,
+                toWarehouseId: transferData.toWarehouseId,
+                itemId: item.itemId,
+                quantity: item.quantity,
+                referenceId: transferData._id,
+                performedBy: userId,
+                remarks: `Stock Transfer done for transfer ${transferData.transferNumber}`
+            }, session)
+        }
+
+
+        // -----update data 
+        transferData.status = "COMPLETED"
+        await transferData.save({session})
+
+
+        return transferData
+
+
+
+    })
+
+    return completeTransfer
 }

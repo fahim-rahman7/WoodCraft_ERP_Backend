@@ -31,6 +31,7 @@ router.post('/:id/approve', transferController.approveTransfer);
 
 
 // ------transfer complete
+router.post('/:id/complete', transferController.completeTransfer)
 
 // ------transfer cancel
 
