@@ -1,51 +1,79 @@
 import { ApiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { approveTransferServices, completeTransferServices, createNewTransferServices, getAllTransferServices, getSingleTransferServices } from "./transfer.services.js";
-
-
+import {
+  approveTransferServices,
+  cancelTransferServices,
+  completeTransferServices,
+  createNewTransferServices,
+  getAllTransferServices,
+  getSingleTransferServices,
+} from "./transfer.services.js";
 
 // -----create new transfer
-export const createNewTransfer = asyncHandler(async(req, res)=>{
-    const transfer = await createNewTransferServices(req.organizationId, req.user.id, req.body)
+export const createNewTransfer = asyncHandler(async (req, res) => {
+  const transfer = await createNewTransferServices(
+    req.organizationId,
+    req.user.id,
+    req.body,
+  );
 
-    new ApiResponse(201, 'Warehouse transfer request created successfully', transfer).send(res)
-})
-
-
+  new ApiResponse(
+    201,
+    "Warehouse transfer request created successfully",
+    transfer,
+  ).send(res);
+});
 
 // -----get all transfer with filter
-export const getAllTransfer = asyncHandler(async(req, res)=>{
-    const transfers = await getAllTransferServices(req.organizationId, req.query)
+export const getAllTransfer = asyncHandler(async (req, res) => {
+  const transfers = await getAllTransferServices(req.organizationId, req.query);
 
-    new ApiResponse(200, 'All Transfers fetched successfully', transfers).send(res)
-})
-
-
+  new ApiResponse(200, "All Transfers fetched successfully", transfers).send(
+    res,
+  );
+});
 
 // -----get single transfer
-export const getSingleTransfer = asyncHandler(async(req,res)=>{
+export const getSingleTransfer = asyncHandler(async (req, res) => {
+  const transfer = await getSingleTransferServices(
+    req.params.id,
+    req.organizationId,
+  );
 
-    const transfer = await getSingleTransferServices(req.params.id, req.organizationId)
-
-    new ApiResponse(200, 'Single Transfers fetched successfully', transfer).send(res)
-})
-
+  new ApiResponse(200, "Single Transfers fetched successfully", transfer).send(
+    res,
+  );
+});
 
 // ----approve transfer
-export const approveTransfer = asyncHandler(async(req,res)=>{
+export const approveTransfer = asyncHandler(async (req, res) => {
+  const transfer = await approveTransferServices(
+    req.params.id,
+    req.organizationId,
+    req.user.id,
+  );
 
-    const transfer = await approveTransferServices(req.params.id, req.organizationId, req.user.id)
-
-    new ApiResponse(200, 'Transfer Approved successfully', transfer).send(res)
-})
-
-
+  new ApiResponse(200, "Transfer Approved successfully", transfer).send(res);
+});
 
 // -----complete transfer
-export const completeTransfer = asyncHandler(async(req, res)=>{
-    const transfer = await completeTransferServices(req.params.id, req.organizationId, req.user.id)
+export const completeTransfer = asyncHandler(async (req, res) => {
+  const transfer = await completeTransferServices(
+    req.params.id,
+    req.organizationId,
+    req.user.id,
+  );
 
+  new ApiResponse(200, "Transfer Completed successfully", transfer).send(res);
+});
 
-    new ApiResponse(200, 'Transfer Completed successfully', transfer).send(res)
+// -----cancel transfer
+export const cancelTransfer = asyncHandler(async (req, res) => {
+  const transfer = await cancelTransferServices(
+    req.params.id,
+    req.organizationId,
+    req.user.id,
+  );
 
-})
+  new ApiResponse(200, "Transfer Cancelled successfully", transfer).send(res);
+});

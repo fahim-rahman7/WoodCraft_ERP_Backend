@@ -1,55 +1,55 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const transferSchema = new mongoose.Schema(
   {
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Organization',
+      ref: "Organization",
       required: true,
       index: true,
     },
     transferNumber: {
       type: String,
-      required: [true, 'Transfer number is required'],
+      required: [true, "Transfer number is required"],
       uppercase: true,
       trim: true,
     },
     fromWarehouseId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Warehouse',
-      required: [true, 'Source warehouse is required'],
+      ref: "Warehouse",
+      required: [true, "Source warehouse is required"],
     },
     toWarehouseId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Warehouse',
-      required: [true, 'Destination warehouse is required'],
+      ref: "Warehouse",
+      required: [true, "Destination warehouse is required"],
     },
     items: [
       {
         itemId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'Item',
-          required: [true, 'Item is required'],
+          ref: "Item",
+          required: [true, "Item is required"],
         },
         quantity: {
           type: Number,
-          required: [true, 'Quantity is required'],
-          min: [0.01, 'Quantity must be greater than zero'],
+          required: [true, "Quantity is required"],
+          min: [0.01, "Quantity must be greater than zero"],
         },
       },
     ],
     status: {
       type: String,
-      enum: ['PENDING', 'APPROVED', 'COMPLETED', 'CANCELLED'],
-      default: 'PENDING',
+      enum: ["PENDING", "APPROVED", "COMPLETED", "CANCELLED"],
+      default: "PENDING",
     },
     requestedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     remarks: {
       type: String,
@@ -58,10 +58,12 @@ const transferSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
+transferSchema.index(
+  { organizationId: 1, transferNumber: 1 },
+  { unique: true },
+);
 
-transferSchema.index({ organizationId: 1, transferNumber: 1 }, { unique: true });
-
-export const Transfer = mongoose.model('Transfer', transferSchema);
+export const Transfer = mongoose.model("Transfer", transferSchema);
