@@ -27,6 +27,8 @@ router.get('/', transferController.getAllTransfer);
 router.get('/:id', transferController.getSingleTransfer);
 
 // ------transfer approve
+router.post('/:id/approve', transferController.approveTransfer);
+
 
 // ------transfer complete
 

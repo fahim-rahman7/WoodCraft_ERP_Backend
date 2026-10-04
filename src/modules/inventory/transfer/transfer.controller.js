@@ -1,6 +1,6 @@
 import { ApiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { createNewTransferServices, getAllTransferServices, getSingleTransferServices } from "./transfer.services.js";
+import { approveTransferServices, createNewTransferServices, getAllTransferServices, getSingleTransferServices } from "./transfer.services.js";
 
 
 
@@ -28,4 +28,13 @@ export const getSingleTransfer = asyncHandler(async(req,res)=>{
     const transfer = await getSingleTransferServices(req.params.id, req.organizationId)
 
     new ApiResponse(200, 'Single Transfers fetched successfully', transfer).send(res)
+})
+
+
+// ----approve transfer
+export const approveTransfer = asyncHandler(async(req,res)=>{
+
+    const transfer = await approveTransferServices(req.params.id, req.organizationId, req.user.id)
+
+    new ApiResponse(200, 'Transfer Approved successfully', transfer).send(res)
 })

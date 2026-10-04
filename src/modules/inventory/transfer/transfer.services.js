@@ -1,8 +1,10 @@
+import mongoose from "mongoose"
 import { AppError } from "../../../utils/appError.js"
 import { Item } from "../item/item.model.js"
 import { Stock } from "../stock/stock.model.js"
 import { Warehouse } from "../warehouse/warehouse.model.js"
 import { Transfer } from "./transfer.model.js"
+import { reserveStock } from "../stock/stock.service.js"
 
 
 // -----create new transfer
@@ -139,4 +141,56 @@ export const getSingleTransferServices = async(trnasferId, organizationId)=>{
     }
 
     return transferData
+}
+
+
+
+// ------approve transfer
+export const approveTransferServices = async(trnasferId, organizationId, userId)=>{
+
+    // ------applying logic inside of a transaction
+    const approveTransfer = await mongoose.connection.transaction(async(session)=>{
+
+
+        // ----getting transfer data
+        const transferData = await Transfer.findOne({
+            _id: trnasferId,
+            organizationId
+        }).session(session)
+    
+        if(!transferData){
+            throw new AppError("No data found", 404)
+        }
+    
+        if(transferData.status !== "PENDING"){
+        throw new AppError(`Only pending transfer can be approved. Current status: ${transferData.status}`, 400)
+    }
+    
+
+
+
+        // ------reserrving transferable stock
+
+        for(const item of transferData.items){
+            await reserveStock({
+                organizationId,
+                warehouseId: transferData.fromWarehouseId,
+                itemId: item.itemId,
+                quantity: item.quantity,
+                referenceType: 'STOCK_TRANSFER',
+                referenceId: transferData._id,
+                performedBy: userId,
+                remarks: `Stock reserved for transfer ${transferData.transferNumber}`
+            }, session)
+        }
+
+        // -----update data 
+        transferData.status = "APPROVED"
+        transferData.approvedBy = userId
+        await transferData.save({session})
+
+        return transferData
+    })
+
+    return approveTransfer
 }
