@@ -4,6 +4,7 @@ import orgRoutes from './organization/index.js';
 import membershipRoutes from './membership/index.js';
 import billingRoutes from './billing/index.js';
 import inventoryRoutes from './inventory/index.js';
+import productionRoutes from './production/index.js';
 
 const router = express.Router();
 
@@ -12,6 +13,7 @@ router.use('/organizations', orgRoutes);
 router.use('/memberships', membershipRoutes);
 router.use('/billing', billingRoutes);
 router.use('/inventory', inventoryRoutes);
+router.use('/production', productionRoutes);
 
 
 export default router;
