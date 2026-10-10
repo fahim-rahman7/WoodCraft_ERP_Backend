@@ -6,7 +6,10 @@ import {
 } from "../../../middlewares/org.middleware.js";
 import { validate } from "../../../middlewares/validate.middleware.js";
 import * as transferController from "./transfer.controller.js";
-import { createTransferSchema } from "./transfer.validation.js";
+import {
+  createTransferSchema,
+  transferIdParamsSchema,
+} from "./transfer.validation.js";
 
 const router = Router();
 
@@ -23,15 +26,31 @@ router.post(
 router.get("/", transferController.getAllTransfer);
 
 // ------single transfer with id
-router.get("/:id", transferController.getSingleTransfer);
+router.get(
+  "/:id",
+  validate(transferIdParamsSchema, "params"),
+  transferController.getSingleTransfer,
+);
 
 // ------transfer approve
-router.post("/:id/approve", transferController.approveTransfer);
+router.post(
+  "/:id/approve",
+  validate(transferIdParamsSchema, "params"),
+  transferController.approveTransfer,
+);
 
 // ------transfer complete
-router.post("/:id/complete", transferController.completeTransfer);
+router.post(
+  "/:id/complete",
+  validate(transferIdParamsSchema, "params"),
+  transferController.completeTransfer,
+);
 
 // ------transfer cancel
-router.post("/:id/cancel", transferController.cancelTransfer);
+router.post(
+  "/:id/cancel",
+  validate(transferIdParamsSchema, "params"),
+  transferController.cancelTransfer,
+);
 
 export default router;

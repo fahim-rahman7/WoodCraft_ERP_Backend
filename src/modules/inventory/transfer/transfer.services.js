@@ -16,7 +16,7 @@ export const createNewTransferServices = async (
   userId,
   payload,
 ) => {
-  const { fromWarehouseId, toWarehouseId, itemId, quantity, remarks } = payload;
+  const { fromWarehouseId, toWarehouseId, items, remarks } = payload;
 
   // ----checking from and destination warehouse same or not
   if (fromWarehouseId === toWarehouseId) {
@@ -46,22 +46,30 @@ export const createNewTransferServices = async (
     throw new AppError("Destination warehouse not found", 404);
   }
 
-  // -----checking item exist or not
-  const itemExist = await Item.findOne({
-    _id: itemId,
-    organizationId,
-    status: "ACTIVE",
-  });
-  if (!itemExist) {
-    throw new AppError("Item not found", 404);
+
+  // ----checking every item exist or not
+  for(const item of items){
+
+    const itemExist = await Item.findOne({
+      _id: item.id,
+      organizationId,
+      status: "ACTIVE",
+    });
+    if (!itemExist) {
+      throw new AppError("Item not found", 404);
+    }
+
+
+    // ----checking item stock exist on from warehouse
+    const stockExist = await Stock.findOne({
+      organizationId,
+      itemId: item.id,
+      warehouseId: fromWarehouseId,
+    });
   }
 
-  // ----checking item stock exist on from warehouse
-  const stockExist = await Stock.findOne({
-    organizationId,
-    itemId,
-    warehouseId: fromWarehouseId,
-  });
+
+
 
   if (!stockExist) {
     throw new AppError(
@@ -96,7 +104,7 @@ export const createNewTransferServices = async (
     transferNumber,
     fromWarehouseId,
     toWarehouseId,
-    items: [{ itemId, quantity }],
+    items,
     remarks,
     requestedBy: userId,
   });

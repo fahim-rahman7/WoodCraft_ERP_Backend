@@ -1,6 +1,8 @@
-export const validate = (schema) => async (req, res, next) => {
+export const validate = (schema, source = 'body') => async (req, res, next) => {
   try {
-    req.body = await schema.parseAsync(req.body);
+    // source হতে পারে: 'body', 'query', বা 'params'
+    // Zod ভ্যালিডেশনের পর ডেটা আবার সেখানেই রিপ্লেস হবে (যাতে coerce/transform কাজ করে)
+    req[source] = await schema.parseAsync(req[source]);
     next();
   } catch (error) {
     if (error.name === 'ZodError') {
