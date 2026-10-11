@@ -51,7 +51,7 @@ export const createNewTransferServices = async (
   for(const item of items){
 
     const itemExist = await Item.findOne({
-      _id: item.id,
+      _id: item.itemId,   //-----------
       organizationId,
       status: "ACTIVE",
     });
@@ -63,28 +63,31 @@ export const createNewTransferServices = async (
     // ----checking item stock exist on from warehouse
     const stockExist = await Stock.findOne({
       organizationId,
-      itemId: item.id,
+      itemId: item.itemId,   ///------------
       warehouseId: fromWarehouseId,
     });
+
+    if (!stockExist) {
+      throw new AppError(
+        "This item is not available in the source warehouse",
+        400,
+      );
+    }
+
+    // -----checking item quantity
+    if (stockExist.availableQuantity < item.quantity) {
+      throw new AppError(
+        `Not enough stock. Available: ${stockExist.availableQuantity}`,
+        400,
+      );
+    }
+
   }
 
 
 
 
-  if (!stockExist) {
-    throw new AppError(
-      "This item is not available in the source warehouse",
-      400,
-    );
-  }
 
-  // -----checking item quantity
-  if (stockExist.availableQuantity < quantity) {
-    throw new AppError(
-      `Not enough stock. Available: ${stockExist.availableQuantity}`,
-      400,
-    );
-  }
 
   //---- trnasfer number genarate
   // -----finding last transfer of this organization
