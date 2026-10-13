@@ -1,7 +1,20 @@
 import { Item } from './item.model.js';
+import { Category } from '../category/category.model.js';
 import { AppError } from '../../../utils/appError.js';
 
 export const createItem = async (organizationId, payload) => {
+  // ---- Check if category exists and belongs to this organization
+  const categoryExist = await Category.findOne({
+    _id: payload.categoryId,
+    organizationId,
+    status: 'ACTIVE',
+  });
+
+  if (!categoryExist) {
+    throw new AppError('Category not found or inactive', 404);
+  }
+
+  // ---- Check SKU uniqueness
   const existingSku = await Item.findOne({
     organizationId,
     sku: payload.sku,
@@ -34,7 +47,7 @@ export const getItems = async (organizationId, query = {}) => {
   }
 
   return await Item.find(filter)
-    .populate('categoryId', 'name code')
+    .populate('categoryId', 'name') // code remove kora holo karon Category model-e code nei
     .sort({ createdAt: -1 });
 };
 
@@ -42,7 +55,7 @@ export const getItemById = async (organizationId, itemId) => {
   const item = await Item.findOne({
     _id: itemId,
     organizationId,
-  }).populate('categoryId', 'name code');
+  }).populate('categoryId', 'name');
 
   if (!item) {
     throw new AppError('Item not found', 404);
@@ -52,6 +65,19 @@ export const getItemById = async (organizationId, itemId) => {
 };
 
 export const updateItem = async (organizationId, itemId, payload) => {
+  // ---- If categoryId is being updated, check if it exists
+  if (payload.categoryId) {
+    const categoryExist = await Category.findOne({
+      _id: payload.categoryId,
+      organizationId,
+      status: 'ACTIVE',
+    });
+
+    if (!categoryExist) {
+      throw new AppError('Category not found or inactive', 404);
+    }
+  }
+
   if (payload.sku) {
     const existingSku = await Item.findOne({
       organizationId,
@@ -68,7 +94,7 @@ export const updateItem = async (organizationId, itemId, payload) => {
     { _id: itemId, organizationId },
     payload,
     { new: true, runValidators: true }
-  ).populate('categoryId', 'name code');
+  ).populate('categoryId', 'name');
 
   if (!item) {
     throw new AppError('Item not found', 404);

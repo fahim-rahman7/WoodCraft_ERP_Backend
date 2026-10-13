@@ -16,7 +16,11 @@ export const createGoodsReceiptSchema = z.object({
   warehouseId: z.string({
     required_error: 'Warehouse ID is required',
   }),
-  supplierName: z.string().optional(),
+  supplierId: z
+  .string({
+    required_error: 'Supplier ID is required',
+  })
+  .regex(/^[0-9a-fA-F]{24}$/, 'Invalid supplier ID format'),
   supplierInvoiceNo: z.string().optional(),
   items: z
     .array(goodsReceiptItemSchema)

@@ -43,9 +43,10 @@ const goodsReceiptSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    supplierName: {
-      type: String,
-      trim: true,
+    supplierId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Supplier',
+      required: [true, 'Supplier ID is required'],
     },
     supplierInvoiceNo: {
       type: String,
@@ -78,6 +79,13 @@ const goodsReceiptSchema = new mongoose.Schema(
   }
 );
 
+// grnNumber অর্গানাইজেশনে ইউনিক হবে
 goodsReceiptSchema.index({ organizationId: 1, grnNumber: 1 }, { unique: true });
+
+// 🆕 একই সাপ্লায়ারের জন্য supplierInvoiceNo যেন অর্গানাইজেশনে ডুপ্লিকেট না হয়
+goodsReceiptSchema.index(
+  { organizationId: 1, supplierId: 1, supplierInvoiceNo: 1 },
+  { unique: true, sparse: true }
+);
 
 export const GoodsReceipt = mongoose.model('GoodsReceipt', goodsReceiptSchema);

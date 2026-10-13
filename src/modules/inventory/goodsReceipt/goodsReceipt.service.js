@@ -4,6 +4,7 @@ import { Warehouse } from '../warehouse/warehouse.model.js';
 import { Item } from '../item/item.model.js';
 import * as stockService from '../stock/stock.service.js';
 import { AppError } from '../../../utils/appError.js';
+import { Supplier } from '../supplier/supplier.model.js';
 
 // GRN Number জেনারেট করার ফাংশন (যেমন: GRN-20261003-0001)
 const generateGRNNumber = async (organizationId) => {
@@ -14,6 +15,33 @@ const generateGRNNumber = async (organizationId) => {
 };
 
 export const createGoodsReceipt = async (organizationId, userId, payload) => {
+  // ---- Check if supplier exists
+  const supplierExist = await Supplier.findOne({
+    _id: payload.supplierId,
+    organizationId,
+    status: 'ACTIVE',
+  });
+
+  if (!supplierExist) {
+    throw new AppError('Supplier not found or inactive', 404);
+  }
+
+  // ---- Check if supplierInvoiceNo already exists for this supplier
+  if (payload.supplierInvoiceNo) {
+    const existingInvoice = await GoodsReceipt.findOne({
+      organizationId,
+      supplierId: payload.supplierId,
+      supplierInvoiceNo: payload.supplierInvoiceNo,
+    });
+
+    if (existingInvoice) {
+      throw new AppError(
+        `Goods Receipt with supplier invoice '${payload.supplierInvoiceNo}' already exists for this supplier`,
+        400
+      );
+    }
+  }
+
   // ১. ওয়ারহাউজ চেক করা
   const warehouseExists = await Warehouse.findOne({
     _id: payload.warehouseId,
@@ -50,7 +78,7 @@ export const createGoodsReceipt = async (organizationId, userId, payload) => {
     organizationId,
     warehouseId: payload.warehouseId,
     grnNumber,
-    supplierName: payload.supplierName,
+    supplierId: payload.supplierId,
     supplierInvoiceNo: payload.supplierInvoiceNo,
     items: processedItems,
     totalAmount,
@@ -70,11 +98,11 @@ export const getGoodsReceipts = async (organizationId, query = {}) => {
   if (query.search) {
     filter.$or = [
       { grnNumber: { $regex: query.search, $options: 'i' } },
-      { supplierName: { $regex: query.search, $options: 'i' } },
     ];
   }
 
   return await GoodsReceipt.find(filter)
+    .populate('supplierId', 'name phone email')
     .populate('warehouseId', 'name code')
     .populate('items.itemId', 'name sku unit')
     .populate('createdBy', 'name email')
@@ -85,7 +113,9 @@ export const getGoodsReceiptById = async (organizationId, id) => {
   const goodsReceipt = await GoodsReceipt.findOne({ _id: id, organizationId })
     .populate('warehouseId', 'name code location')
     .populate('items.itemId', 'name sku unit itemType woodAttributes')
-    .populate('createdBy', 'name email');
+    .populate('createdBy', 'name email')
+    .populate('supplierId', 'name phone email address');
+    
 
   if (!goodsReceipt) {
     throw new AppError('Goods Receipt not found', 404);

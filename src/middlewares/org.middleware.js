@@ -3,7 +3,7 @@ import { AppError } from '../utils/appError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 export const requireOrgContext = asyncHandler(async (req, res, next) => {
-  const orgId = req.headers['x-organization-id'] || req.params.orgId;
+  const orgId = req.headers['x-organization-id'];
 
   if (!orgId) {
     throw new AppError('Organization context ID is required', 400);

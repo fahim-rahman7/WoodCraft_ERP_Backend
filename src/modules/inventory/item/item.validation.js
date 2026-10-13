@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 export const createItemSchema = z.object({
-  categoryId: z.string({
-    required_error: 'Category ID is required',
-  }),
+  categoryId: z
+    .string({
+      required_error: 'Category ID is required',
+    })
+    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid category ID format'),
 
   name: z
     .string({
@@ -39,6 +41,10 @@ export const createItemSchema = z.object({
     .optional(),
 
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+});
+
+export const itemIdParamSchema = z.object({
+  id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid item ID format'),
 });
 
 export const updateItemSchema = createItemSchema.partial();
