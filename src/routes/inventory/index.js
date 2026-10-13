@@ -7,6 +7,7 @@ import goodsReceiptRoutes from '../../modules/inventory/goodsReceipt/goodsReceip
 import transferRoutes from "../../modules/inventory/transfer/transfer.routes.js"
 import categoryRoutes from "../../modules/inventory/category/category.routes.js"
 import supplierRoutes from "../../modules/inventory/supplier/supplier.router.js"
+import purchaseRoutes from "../../modules/inventory/purchase/purchase.routes.js"
 
 
 
@@ -21,5 +22,6 @@ router.use('/goods-receipts', goodsReceiptRoutes);
 router.use('/transfer', transferRoutes);
 router.use('/category', categoryRoutes);
 router.use('/suppliers', supplierRoutes);
+router.use('/purchase', purchaseRoutes);
 
 export default router;

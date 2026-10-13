@@ -33,6 +33,10 @@ const goodsReceiptSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    purchaseOrderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PurchaseOrder',
+    },
     warehouseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Warehouse',

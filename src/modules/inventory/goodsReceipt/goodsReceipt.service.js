@@ -1,15 +1,30 @@
 import mongoose from 'mongoose';
-import { GoodsReceipt } from './goodsReceipt.model.js';
-import { Warehouse } from '../warehouse/warehouse.model.js';
-import { Item } from '../item/item.model.js';
+import {
+  GoodsReceipt
+} from './goodsReceipt.model.js';
+import {
+  Warehouse
+} from '../warehouse/warehouse.model.js';
+import {
+  Item
+} from '../item/item.model.js';
 import * as stockService from '../stock/stock.service.js';
-import { AppError } from '../../../utils/appError.js';
-import { Supplier } from '../supplier/supplier.model.js';
+import {
+  AppError
+} from '../../../utils/appError.js';
+import {
+  Supplier
+} from '../supplier/supplier.model.js';
+import {
+  PurchaseOrder
+} from '../purchase/purchase.model.js';
 
 // GRN Number জেনারেট করার ফাংশন (যেমন: GRN-20261003-0001)
 const generateGRNNumber = async (organizationId) => {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const count = await GoodsReceipt.countDocuments({ organizationId });
+  const count = await GoodsReceipt.countDocuments({
+    organizationId
+  });
   const sequence = String(count + 1).padStart(4, '0');
   return `GRN-${dateStr}-${sequence}`;
 };
@@ -42,7 +57,7 @@ export const createGoodsReceipt = async (organizationId, userId, payload) => {
     }
   }
 
-  // ১. ওয়ারহাউজ চেক করা
+  // ১. ওয়ারহাউজ চেক করা
   const warehouseExists = await Warehouse.findOne({
     _id: payload.warehouseId,
     organizationId,
@@ -51,14 +66,63 @@ export const createGoodsReceipt = async (organizationId, userId, payload) => {
     throw new AppError('Warehouse not found', 404);
   }
 
-  // ২. প্রতিটি আইটেম চেক করা এবং টোটাল হিসেব করা
+  // ২. যদি purchaseOrderId দেওয়া থাকে, তবে PO ভ্যালিডেশন করা
+  let purchaseOrder = null;
+  if (payload.purchaseOrderId) {
+    purchaseOrder = await PurchaseOrder.findOne({
+      _id: payload.purchaseOrderId,
+      organizationId,
+    });
+
+    if (!purchaseOrder) {
+      throw new AppError('Purchase Order not found', 404);
+    }
+
+    // চেক করা যে PO টি approved বা partially received অবস্থায় আছে কি না
+    if (purchaseOrder.status !== 'APPROVED' && purchaseOrder.status !== 'PARTIALLY_RECEIVED') {
+      throw new AppError(
+        `Cannot create Goods Receipt for a Purchase Order with status '${purchaseOrder.status}'. Order must be APPROVED first.`,
+        400
+      );
+    }
+
+    if (purchaseOrder.status === 'CANCELLED' || purchaseOrder.status === 'RECEIVED') {
+      throw new AppError(`Cannot create GRN for a Purchase Order with status '${purchaseOrder.status}'`, 400);
+    }
+
+  }
+
+  // ৩. প্রতিটি আইটেম চেক করা এবং টোটাল হিসেব করা
   let totalAmount = 0;
   const processedItems = [];
 
   for (const item of payload.items) {
-    const itemExists = await Item.findOne({ _id: item.itemId, organizationId });
+    // অর্গানাইজেশনে আইটেমটি আছে কি না চেক
+    const itemExists = await Item.findOne({
+      _id: item.itemId,
+      organizationId,
+    });
     if (!itemExists) {
       throw new AppError(`Item not found with ID: ${item.itemId}`, 404);
+    }
+
+    // যদি PO থাকে, তবে চেক করতে হবে আইটেমটি PO-তে ছিল কি না এবং কোয়ান্টিটি ঠিক আছে কি না
+    if (purchaseOrder) {
+      const poItem = purchaseOrder.items.find(
+        (i) => i.itemId.toString() === item.itemId.toString()
+      );
+
+      if (!poItem) {
+        throw new AppError(`Item with ID ${item.itemId} does not exist in the referenced Purchase Order`, 400);
+      }
+
+      const remainingQty = poItem.orderedQuantity - (poItem.receivedQuantity || 0);
+      if (item.quantity > remainingQty) {
+        throw new AppError(
+          `Received quantity (${item.quantity}) exceeds remaining ordered quantity (${remainingQty}) for item: ${itemExists.name}`,
+          400
+        );
+      }
     }
 
     const itemTotalPrice = (item.unitPrice || 0) * item.quantity;
@@ -76,6 +140,7 @@ export const createGoodsReceipt = async (organizationId, userId, payload) => {
 
   const goodsReceipt = await GoodsReceipt.create({
     organizationId,
+    purchaseOrderId: payload.purchaseOrderId || undefined,
     warehouseId: payload.warehouseId,
     grnNumber,
     supplierId: payload.supplierId,
@@ -91,14 +156,19 @@ export const createGoodsReceipt = async (organizationId, userId, payload) => {
 };
 
 export const getGoodsReceipts = async (organizationId, query = {}) => {
-  const filter = { organizationId };
+  const filter = {
+    organizationId
+  };
 
   if (query.warehouseId) filter.warehouseId = query.warehouseId;
   if (query.status) filter.status = query.status;
   if (query.search) {
-    filter.$or = [
-      { grnNumber: { $regex: query.search, $options: 'i' } },
-    ];
+    filter.$or = [{
+      grnNumber: {
+        $regex: query.search,
+        $options: 'i'
+      }
+    }, ];
   }
 
   return await GoodsReceipt.find(filter)
@@ -106,16 +176,21 @@ export const getGoodsReceipts = async (organizationId, query = {}) => {
     .populate('warehouseId', 'name code')
     .populate('items.itemId', 'name sku unit')
     .populate('createdBy', 'name email')
-    .sort({ createdAt: -1 });
+    .sort({
+      createdAt: -1
+    });
 };
 
 export const getGoodsReceiptById = async (organizationId, id) => {
-  const goodsReceipt = await GoodsReceipt.findOne({ _id: id, organizationId })
+  const goodsReceipt = await GoodsReceipt.findOne({
+      _id: id,
+      organizationId
+    })
     .populate('warehouseId', 'name code location')
     .populate('items.itemId', 'name sku unit itemType woodAttributes')
     .populate('createdBy', 'name email')
     .populate('supplierId', 'name phone email address');
-    
+
 
   if (!goodsReceipt) {
     throw new AppError('Goods Receipt not found', 404);
@@ -128,7 +203,10 @@ export const getGoodsReceiptById = async (organizationId, id) => {
  * GRN স্ট্যাটাস RECEIVED করা এবং স্টক বাড়ানো (Stock Engine hit করা)
  */
 export const receiveGoodsReceipt = async (organizationId, userId, id) => {
-  const goodsReceipt = await GoodsReceipt.findOne({ _id: id, organizationId });
+  const goodsReceipt = await GoodsReceipt.findOne({
+    _id: id,
+    organizationId
+  });
 
   if (!goodsReceipt) {
     throw new AppError('Goods Receipt not found', 404);
@@ -143,10 +221,28 @@ export const receiveGoodsReceipt = async (organizationId, userId, id) => {
   session.startTransaction();
 
   try {
+    // যদি GRN কোনো Purchase Order এর বিপরীতে হয়ে থাকে, তবে PO item গুলি update করা
+    if (goodsReceipt.purchaseOrderId) {
+      const po = await PurchaseOrder.findById(goodsReceipt.purchaseOrderId).session(session);
+      if (po) {
+        for (const grnItem of goodsReceipt.items) {
+          const poItem = po.items.find(i => i.itemId.toString() === grnItem.itemId.toString());
+          if (poItem) {
+            poItem.receivedQuantity = (poItem.receivedQuantity || 0) + grnItem.quantity;
+          }
+        }
+
+        // চেক করা সব আইটেম ফুল রিসিভ হয়েছে কি না
+        const isFullyReceived = po.items.every(i => i.receivedQuantity >= i.orderedQuantity);
+        po.status = isFullyReceived ? 'RECEIVED' : 'PARTIALLY_RECEIVED';
+        await po.save({
+          session
+        });
+      }
+    }
     // প্রতিটা আইটেমের জন্য Core Stock Engine-এ কল করা
     for (const item of goodsReceipt.items) {
-      await stockService.increaseStock(
-        {
+      await stockService.increaseStock({
           organizationId,
           warehouseId: goodsReceipt.warehouseId,
           itemId: item.itemId,
@@ -162,7 +258,9 @@ export const receiveGoodsReceipt = async (organizationId, userId, id) => {
 
     goodsReceipt.status = 'RECEIVED';
     goodsReceipt.receivedAt = new Date();
-    await goodsReceipt.save({ session });
+    await goodsReceipt.save({
+      session
+    });
 
     await session.commitTransaction();
     session.endSession();
