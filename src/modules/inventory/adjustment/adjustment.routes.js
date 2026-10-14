@@ -46,4 +46,11 @@ router.post(
   adjustmentController.cancelAdjustment,
 );
 
+// ---------apply adjustment
+router.post(
+  "/:id/apply",
+  validate(adjustmentIdParamsSchema, "params"),
+  adjustmentController.applyAdjustment,
+);
+
 export default router;

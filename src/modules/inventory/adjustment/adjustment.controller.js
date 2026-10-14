@@ -2,6 +2,7 @@ import { ApiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import {
   adjustmentListServices,
+  applyAdjustmentServices,
   approveAdjustmentServices,
   cancelAdjustmentServices,
   createAdjustmentServices,
@@ -76,6 +77,21 @@ export const cancelAdjustment = asyncHandler(async (req, res) => {
   new ApiResponse(
     200,
     "Stock adjustment cancelled successfully",
+    adjustment,
+  ).send(res);
+});
+
+// ----------apply adjustment
+export const applyAdjustment = asyncHandler(async (req, res) => {
+  const adjustment = await applyAdjustmentServices(
+    req.params.id,
+    req.organizationId,
+    req.user.id,
+  );
+
+  new ApiResponse(
+    200,
+    "Stock adjustment applied successfully",
     adjustment,
   ).send(res);
 });

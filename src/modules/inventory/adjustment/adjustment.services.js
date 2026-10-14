@@ -1,8 +1,10 @@
+import mongoose from "mongoose";
 import { AppError } from "../../../utils/appError.js";
 import { Item } from "../item/item.model.js";
 import { Stock } from "../stock/stock.model.js";
 import { Warehouse } from "../warehouse/warehouse.model.js";
 import { Adjustment } from "./adjustment.model.js";
+import { decreaseStock, increaseStock } from "../stock/stock.service.js";
 
 // -----create new adjustment
 export const createAdjustmentServices = async (
@@ -216,4 +218,69 @@ export const cancelAdjustmentServices = async (
   await adjustmentData.save();
 
   return adjustmentData;
+};
+
+// -----apply adjustment
+export const applyAdjustmentServices = async (
+  adjustmentId,
+  organizationId,
+  userId,
+) => {
+  // ------applying logic inside of a transaction
+  const applyAdjustment = await mongoose.connection.transaction(
+    async (session) => {
+      // ----getting adjustment data of this organization
+      const adjustmentData = await Adjustment.findOne({
+        _id: adjustmentId,
+        organizationId,
+      }).session(session);
+
+      if (!adjustmentData) {
+        throw new AppError("Adjustment not found", 404);
+      }
+
+      // ----only approved adjustment can be applied
+      if (adjustmentData.status !== "APPROVED") {
+        throw new AppError(
+          `Only approved adjustment can be applied. Current status: ${adjustmentData.status}`,
+          400,
+        );
+      }
+
+      // ------updating stock of every item
+      for (const item of adjustmentData.items) {
+        // ----same quantity, nothing to change
+        if (item.difference === 0) continue;
+
+        const stockData = {
+          organizationId,
+          warehouseId: adjustmentData.warehouseId,
+          itemId: item.itemId,
+          quantity: Math.abs(item.difference),
+          referenceType: "STOCK_ADJUSTMENT",
+          referenceId: adjustmentData._id,
+          performedBy: userId,
+          remarks: `Stock adjusted for ${adjustmentData.adjustmentNumber} (${adjustmentData.reason})`,
+        };
+
+        // ----physical is more than system, increase stock
+        if (item.difference > 0) {
+          await increaseStock(stockData, session);
+        }
+
+        // ----physical is less than system, decrease stock
+        if (item.difference < 0) {
+          await decreaseStock(stockData, session);
+        }
+      }
+
+      // -----update data
+      adjustmentData.status = "APPLIED";
+      await adjustmentData.save({ session });
+
+      return adjustmentData;
+    },
+  );
+
+  return applyAdjustment;
 };
