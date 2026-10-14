@@ -184,3 +184,36 @@ export const approveAdjustmentServices = async (
 
   return adjustmentData;
 };
+
+// --------cancel adjustment
+export const cancelAdjustmentServices = async (
+  adjustmentId,
+  organizationId,
+) => {
+  // ----getting adjustment data of this organization
+  const adjustmentData = await Adjustment.findOne({
+    _id: adjustmentId,
+    organizationId,
+  });
+
+  if (!adjustmentData) {
+    throw new AppError("Adjustment not found", 404);
+  }
+
+  // ----only pending or approved adjustment can be cancelled
+  if (
+    adjustmentData.status !== "PENDING" &&
+    adjustmentData.status !== "APPROVED"
+  ) {
+    throw new AppError(
+      `Only pending or approved adjustment can be cancelled. Current status: ${adjustmentData.status}`,
+      400,
+    );
+  }
+
+  // -----update data (no stock change, adjustment does not reserve stock)
+  adjustmentData.status = "CANCELLED";
+  await adjustmentData.save();
+
+  return adjustmentData;
+};

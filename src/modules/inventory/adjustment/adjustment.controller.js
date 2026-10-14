@@ -3,6 +3,7 @@ import { asyncHandler } from "../../../utils/asyncHandler.js";
 import {
   adjustmentListServices,
   approveAdjustmentServices,
+  cancelAdjustmentServices,
   createAdjustmentServices,
   getSingleAdjustmentServices,
 } from "./adjustment.services.js";
@@ -61,6 +62,20 @@ export const approveAdjustment = asyncHandler(async (req, res) => {
   new ApiResponse(
     200,
     "Stock adjustment approved successfully",
+    adjustment,
+  ).send(res);
+});
+
+// ------cancel adjustment
+export const cancelAdjustment = asyncHandler(async (req, res) => {
+  const adjustment = await cancelAdjustmentServices(
+    req.params.id,
+    req.organizationId,
+  );
+
+  new ApiResponse(
+    200,
+    "Stock adjustment cancelled successfully",
     adjustment,
   ).send(res);
 });
