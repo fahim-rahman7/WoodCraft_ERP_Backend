@@ -92,9 +92,8 @@ export const createAdjustmentServices = async (
   return adjustment;
 };
 
-
-// --------get adjustment list 
-export const adjustmentListServices = async(organizationId, query)=>{
+// --------get adjustment list
+export const adjustmentListServices = async (organizationId, query) => {
   const limit = query.limit ? Number(query.limit) : 10;
   const page = query.page ? Number(query.page) : 1;
   const skip = (page - 1) * limit;
@@ -130,4 +129,26 @@ export const adjustmentListServices = async(organizationId, query)=>{
       totalAdjustmentCount,
     },
   };
-}
+};
+
+// --------get single adjustment
+export const getSingleAdjustmentServices = async (
+  adjustmentId,
+  organizationId,
+) => {
+  // ----getting adjustment data of this organization
+  const adjustmentData = await Adjustment.findOne({
+    _id: adjustmentId,
+    organizationId,
+  })
+    .populate("warehouseId", "name code location")
+    .populate("items.itemId", "name sku unit")
+    .populate("requestedBy", "name email")
+    .populate("approvedBy", "name email");
+
+  if (!adjustmentData) {
+    throw new AppError("Adjustment not found", 404);
+  }
+
+  return adjustmentData;
+};

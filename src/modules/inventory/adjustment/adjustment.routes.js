@@ -6,7 +6,10 @@ import {
 } from "../../../middlewares/org.middleware.js";
 import { validate } from "../../../middlewares/validate.middleware.js";
 import * as adjustmentController from "./adjustment.controller.js";
-import { createAdjustmentSchema } from "./adjustment.validation.js";
+import {
+  adjustmentIdParamsSchema,
+  createAdjustmentSchema,
+} from "./adjustment.validation.js";
 
 const router = Router();
 
@@ -19,8 +22,14 @@ router.post(
   adjustmentController.createAdjustment,
 );
 
-
 // ---------get adjustment list
-router.get("/", adjustmentController.getAdjustmentList)
+router.get("/", adjustmentController.getAdjustmentList);
+
+// ---------get single adjustment
+router.get(
+  "/:id",
+  validate(adjustmentIdParamsSchema, "params"),
+  adjustmentController.getSingleAdjustment,
+);
 
 export default router;

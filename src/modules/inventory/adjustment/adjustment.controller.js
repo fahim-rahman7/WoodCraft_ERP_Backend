@@ -1,6 +1,10 @@
 import { ApiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { adjustmentListServices, createAdjustmentServices } from "./adjustment.services.js";
+import {
+  adjustmentListServices,
+  createAdjustmentServices,
+  getSingleAdjustmentServices,
+} from "./adjustment.services.js";
 
 // -----create new adjustment
 export const createAdjustment = asyncHandler(async (req, res) => {
@@ -10,17 +14,37 @@ export const createAdjustment = asyncHandler(async (req, res) => {
     req.body,
   );
 
-  new ApiResponse(201, "Stock adjustment created successfully", adjustment).send(
-    res,
-  );
+  new ApiResponse(
+    201,
+    "Stock adjustment created successfully",
+    adjustment,
+  ).send(res);
 });
 
-
 // ------adjustment list
-export const getAdjustmentList = asyncHandler(async(req, res)=>{
-  const adjustmentList = await adjustmentListServices(req.organizationId, req.query)
-
-  new ApiResponse(201, "All Stock adjustment get successfully", adjustmentList).send(
-    res,
+export const getAdjustmentList = asyncHandler(async (req, res) => {
+  const adjustmentList = await adjustmentListServices(
+    req.organizationId,
+    req.query,
   );
-})
+
+  new ApiResponse(
+    201,
+    "All Stock adjustment get successfully",
+    adjustmentList,
+  ).send(res);
+});
+
+// ------get single adjustment
+export const getSingleAdjustment = asyncHandler(async (req, res) => {
+  const adjustment = await getSingleAdjustmentServices(
+    req.params.id,
+    req.organizationId,
+  );
+
+  new ApiResponse(
+    200,
+    "Stock adjustment fetched successfully",
+    adjustment,
+  ).send(res);
+});
