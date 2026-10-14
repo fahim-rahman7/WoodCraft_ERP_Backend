@@ -38,6 +38,7 @@ export const getAdjustmentList = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
+
 // ------get single adjustment
 export const getSingleAdjustment = asyncHandler(async (req, res) => {
   const adjustment = await getSingleAdjustmentServices(
