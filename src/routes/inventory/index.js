@@ -6,6 +6,9 @@ import stockMovementRoutes from '../../modules/inventory/stockMovement/stockMove
 import goodsReceiptRoutes from '../../modules/inventory/goodsReceipt/goodsReceipt.routes.js';
 import transferRoutes from "../../modules/inventory/transfer/transfer.routes.js"
 import adjustmentRoutes from '../../modules/inventory/adjustment/adjustment.routes.js';
+import categoryRoutes from "../../modules/inventory/category/category.routes.js"
+import supplierRoutes from "../../modules/inventory/supplier/supplier.router.js"
+import purchaseRoutes from "../../modules/inventory/purchase/purchase.routes.js"
 
 
 
@@ -19,5 +22,8 @@ router.use('/stock-movements', stockMovementRoutes);
 router.use('/goods-receipts', goodsReceiptRoutes);
 router.use('/transfer', transferRoutes);
 router.use('/adjustments', adjustmentRoutes);
+router.use('/category', categoryRoutes);
+router.use('/suppliers', supplierRoutes);
+router.use('/purchase', purchaseRoutes);
 
 export default router;
