@@ -19,4 +19,8 @@ router.post(
   adjustmentController.createAdjustment,
 );
 
+
+// ---------get adjustment list
+router.get("/", adjustmentController.getAdjustmentList)
+
 export default router;

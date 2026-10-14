@@ -1,6 +1,6 @@
 import { ApiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { createAdjustmentServices } from "./adjustment.services.js";
+import { adjustmentListServices, createAdjustmentServices } from "./adjustment.services.js";
 
 // -----create new adjustment
 export const createAdjustment = asyncHandler(async (req, res) => {
@@ -14,3 +14,13 @@ export const createAdjustment = asyncHandler(async (req, res) => {
     res,
   );
 });
+
+
+// ------adjustment list
+export const getAdjustmentList = asyncHandler(async(req, res)=>{
+  const adjustmentList = await adjustmentListServices(req.organizationId, req.query)
+
+  new ApiResponse(201, "All Stock adjustment get successfully", adjustmentList).send(
+    res,
+  );
+})

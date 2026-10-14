@@ -91,3 +91,43 @@ export const createAdjustmentServices = async (
 
   return adjustment;
 };
+
+
+// --------get adjustment list 
+export const adjustmentListServices = async(organizationId, query)=>{
+  const limit = query.limit ? Number(query.limit) : 10;
+  const page = query.page ? Number(query.page) : 1;
+  const skip = (page - 1) * limit;
+  const sortBy = query.sortBy || "createdAt";
+  const sortOrder = query.sortOrder === "asc" ? 1 : -1;
+
+  // ----filter object
+  const filter = { organizationId };
+
+  // -----filter object data add
+  if (query.status) filter.status = query.status;
+  if (query.reason) filter.reason = query.reason;
+  if (query.warehouseId) filter.warehouseId = query.warehouseId;
+  if (query.itemId) filter["items.itemId"] = query.itemId;
+
+  const adjustments = await Adjustment.find(filter)
+    .populate("warehouseId", "name code")
+    .populate("items.itemId", "name sku unit")
+    .populate("requestedBy", "name email")
+    .sort({ [sortBy]: sortOrder })
+    .skip(skip)
+    .limit(limit);
+
+  const totalAdjustmentCount = await Adjustment.countDocuments(filter);
+  const totalPage = Math.ceil(totalAdjustmentCount / limit);
+
+  return {
+    data: adjustments,
+    meta: {
+      page,
+      limit,
+      totalPage,
+      totalAdjustmentCount,
+    },
+  };
+}
