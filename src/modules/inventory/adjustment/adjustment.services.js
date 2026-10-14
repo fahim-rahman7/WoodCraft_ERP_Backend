@@ -239,6 +239,31 @@ export const applyAdjustmentServices = async (
         throw new AppError("Adjustment not found", 404);
       }
 
+      // ----checking warehouse exist or not
+      const warehouseExist = await Warehouse.findOne({
+        _id: adjustmentData.warehouseId,
+        organizationId,
+        status: "ACTIVE",
+      }).session(session);
+
+
+      if (!warehouseExist) {
+        throw new AppError("Warehouse not found", 404);
+      }
+
+      // ----checking every item still exist or not
+      for (const item of adjustmentData.items) {
+        const itemExist = await Item.findOne({
+          _id: item.itemId,
+          organizationId,
+          status: "ACTIVE",
+        }).session(session);
+        
+        if (!itemExist) {
+          throw new AppError(`Item not found: ${item.itemId}`, 404);
+        }
+      }
+
       // ----only approved adjustment can be applied
       if (adjustmentData.status !== "APPROVED") {
         throw new AppError(

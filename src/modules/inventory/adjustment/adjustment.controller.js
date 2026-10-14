@@ -32,7 +32,7 @@ export const getAdjustmentList = asyncHandler(async (req, res) => {
   );
 
   new ApiResponse(
-    201,
+    200,
     "All Stock adjustment get successfully",
     adjustmentList,
   ).send(res);
