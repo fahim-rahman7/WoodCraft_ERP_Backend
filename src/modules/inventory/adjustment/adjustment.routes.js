@@ -32,4 +32,11 @@ router.get(
   adjustmentController.getSingleAdjustment,
 );
 
+// ---------approve adjustment
+router.post(
+  "/:id/approve",
+  validate(adjustmentIdParamsSchema, "params"),
+  adjustmentController.approveAdjustment,
+);
+
 export default router;

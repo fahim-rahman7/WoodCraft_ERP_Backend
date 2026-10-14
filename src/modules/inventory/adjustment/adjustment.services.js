@@ -152,3 +152,35 @@ export const getSingleAdjustmentServices = async (
 
   return adjustmentData;
 };
+
+// --------approve adjustment
+export const approveAdjustmentServices = async (
+  adjustmentId,
+  organizationId,
+  userId,
+) => {
+  // ----getting adjustment data of this organization
+  const adjustmentData = await Adjustment.findOne({
+    _id: adjustmentId,
+    organizationId,
+  });
+
+  if (!adjustmentData) {
+    throw new AppError("Adjustment not found", 404);
+  }
+
+  // ----only pending adjustment can be approved
+  if (adjustmentData.status !== "PENDING") {
+    throw new AppError(
+      `Only pending adjustment can be approved. Current status: ${adjustmentData.status}`,
+      400,
+    );
+  }
+
+  // -----update data
+  adjustmentData.status = "APPROVED";
+  adjustmentData.approvedBy = userId;
+  await adjustmentData.save();
+
+  return adjustmentData;
+};

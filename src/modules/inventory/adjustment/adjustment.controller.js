@@ -2,6 +2,7 @@ import { ApiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import {
   adjustmentListServices,
+  approveAdjustmentServices,
   createAdjustmentServices,
   getSingleAdjustmentServices,
 } from "./adjustment.services.js";
@@ -45,6 +46,21 @@ export const getSingleAdjustment = asyncHandler(async (req, res) => {
   new ApiResponse(
     200,
     "Stock adjustment fetched successfully",
+    adjustment,
+  ).send(res);
+});
+
+// ------approve adjustment
+export const approveAdjustment = asyncHandler(async (req, res) => {
+  const adjustment = await approveAdjustmentServices(
+    req.params.id,
+    req.organizationId,
+    req.user.id,
+  );
+
+  new ApiResponse(
+    200,
+    "Stock adjustment approved successfully",
     adjustment,
   ).send(res);
 });
