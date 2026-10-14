@@ -8,6 +8,7 @@ import transferRoutes from "../../modules/inventory/transfer/transfer.routes.js"
 import categoryRoutes from "../../modules/inventory/category/category.routes.js"
 import supplierRoutes from "../../modules/inventory/supplier/supplier.router.js"
 import purchaseRoutes from "../../modules/inventory/purchase/purchase.routes.js"
+import adjustmentRoutes from '../../modules/inventory/adjustment/adjustment.routes.js';
 
 
 
@@ -23,5 +24,6 @@ router.use('/transfer', transferRoutes);
 router.use('/category', categoryRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/purchase', purchaseRoutes);
+router.use('/adjustments', adjustmentRoutes);
 
 export default router;
