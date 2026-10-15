@@ -9,7 +9,7 @@ import categoryRoutes from "../../modules/inventory/category/category.routes.js"
 import supplierRoutes from "../../modules/inventory/supplier/supplier.router.js"
 import purchaseRoutes from "../../modules/inventory/purchase/purchase.routes.js"
 import adjustmentRoutes from '../../modules/inventory/adjustment/adjustment.routes.js';
-
+import qualityInspectionRoutes from '../../modules/inventory/qualityInspection/qualityInspection.router.js';
 
 
 const router = Router();
@@ -25,5 +25,8 @@ router.use('/category', categoryRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/purchase', purchaseRoutes);
 router.use('/adjustments', adjustmentRoutes);
+router.use('/quality-inspections', qualityInspectionRoutes);
+
+
 
 export default router;
