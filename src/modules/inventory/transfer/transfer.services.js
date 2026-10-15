@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AppError } from "../../../utils/appError.js";
 import { Item } from "../item/item.model.js";
+import { Batch } from "../batch/batch.model.js"; // Batch model import
 import { Stock } from "../stock/stock.model.js";
 import { Warehouse } from "../warehouse/warehouse.model.js";
 import { Transfer } from "./transfer.model.js";
@@ -46,12 +47,10 @@ export const createNewTransferServices = async (
     throw new AppError("Destination warehouse not found", 404);
   }
 
-
-  // ----checking every item exist or not
-  for(const item of items){
-
+  // ----checking every item and batch exist & available in stock
+  for (const item of items) {
     const itemExist = await Item.findOne({
-      _id: item.itemId,   //-----------
+      _id: item.itemId,
       organizationId,
       status: "ACTIVE",
     });
@@ -59,17 +58,28 @@ export const createNewTransferServices = async (
       throw new AppError("Item not found", 404);
     }
 
+    // 🆕 Validate Batch existence
+    const batchExist = await Batch.findOne({
+      _id: item.batchId,
+      organizationId,
+      itemId: item.itemId,
+      status: "ACTIVE",
+    });
+    if (!batchExist) {
+      throw new AppError("Batch not found or inactive", 404);
+    }
 
-    // ----checking item stock exist on from warehouse
+    // ----checking item stock exist on from warehouse with specific batchId
     const stockExist = await Stock.findOne({
       organizationId,
-      itemId: item.itemId,   ///------------
+      itemId: item.itemId,
       warehouseId: fromWarehouseId,
+      batchId: item.batchId, // Checked by batchId
     });
 
     if (!stockExist) {
       throw new AppError(
-        "This item is not available in the source warehouse",
+        "This item with the specified batch is not available in the source warehouse",
         400,
       );
     }
@@ -77,25 +87,17 @@ export const createNewTransferServices = async (
     // -----checking item quantity
     if (stockExist.availableQuantity < item.quantity) {
       throw new AppError(
-        `Not enough stock. Available: ${stockExist.availableQuantity}`,
+        `Not enough stock in this batch. Available: ${stockExist.availableQuantity}`,
         400,
       );
     }
-
   }
 
-
-
-
-
-
-  //---- trnasfer number genarate
-  // -----finding last transfer of this organization
+  // ----transfer number generate
   const lastTransfer = await Transfer.findOne({ organizationId })
     .sort({ createdAt: -1 })
     .select("transferNumber");
 
-  // -----generate new transfer number (TRF-0001, TRF-0002 ...)
   const lastNumber = lastTransfer
     ? parseInt(lastTransfer.transferNumber.split("-")[1])
     : 0;
@@ -123,19 +125,19 @@ export const getAllTransferServices = async (organizationId, query) => {
   const sortBy = query.sortBy || "createdAt";
   const sortOrder = query.sortOrder === "asc" ? 1 : -1;
 
-  // ----filter object
   const filter = { organizationId };
 
-  // -----filter object data add
   if (query.status) filter.status = query.status;
   if (query.fromWarehouseId) filter.fromWarehouseId = query.fromWarehouseId;
   if (query.toWarehouseId) filter.toWarehouseId = query.toWarehouseId;
   if (query.itemId) filter["items.itemId"] = query.itemId;
+  if (query.batchId) filter["items.batchId"] = query.batchId; // 🆕 Filter by batchId
 
   const transfers = await Transfer.find(filter)
     .populate("fromWarehouseId", "name code")
     .populate("toWarehouseId", "name code")
     .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status") // Populate batch info
     .populate("requestedBy", "name email")
     .sort({ [sortBy]: sortOrder })
     .skip(skip)
@@ -157,7 +159,6 @@ export const getAllTransferServices = async (organizationId, query) => {
 
 // -----get single transfer
 export const getSingleTransferServices = async (trnasferId, organizationId) => {
-  // ----getting transfer data
   const transferData = await Transfer.findOne({
     _id: trnasferId,
     organizationId,
@@ -165,6 +166,7 @@ export const getSingleTransferServices = async (trnasferId, organizationId) => {
     .populate("fromWarehouseId", "name code")
     .populate("toWarehouseId", "name code")
     .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status") // Populate batch info
     .populate("requestedBy", "name email");
 
   if (!transferData) {
@@ -180,10 +182,8 @@ export const approveTransferServices = async (
   organizationId,
   userId,
 ) => {
-  // ------applying logic inside of a transaction
   const approveTransfer = await mongoose.connection.transaction(
     async (session) => {
-      // ----getting transfer data
       const transferData = await Transfer.findOne({
         _id: trnasferId,
         organizationId,
@@ -200,14 +200,14 @@ export const approveTransferServices = async (
         );
       }
 
-      // ------reserrving transferable stock
-
+      // ------reserving transferable stock with batchId
       for (const item of transferData.items) {
         await reserveStock(
           {
             organizationId,
             warehouseId: transferData.fromWarehouseId,
             itemId: item.itemId,
+            batchId: item.batchId, // Pass batchId
             quantity: item.quantity,
             referenceType: "STOCK_TRANSFER",
             referenceId: transferData._id,
@@ -218,7 +218,6 @@ export const approveTransferServices = async (
         );
       }
 
-      // -----update data
       transferData.status = "APPROVED";
       transferData.approvedBy = userId;
       await transferData.save({ session });
@@ -236,10 +235,8 @@ export const completeTransferServices = async (
   organizationId,
   userId,
 ) => {
-  // ------applying logic inside of a transaction
   const completeTransfer = await mongoose.connection.transaction(
     async (session) => {
-      // ----getting transfer data
       const transferData = await Transfer.findOne({
         _id: trnasferId,
         organizationId,
@@ -256,13 +253,14 @@ export const completeTransferServices = async (
         );
       }
 
-      // ------releasing reserved stock
+      // ------releasing reserved stock with batchId
       for (const item of transferData.items) {
         await releaseReservedStock(
           {
             organizationId,
             warehouseId: transferData.fromWarehouseId,
             itemId: item.itemId,
+            batchId: item.batchId, // 🆕 Pass batchId
             quantity: item.quantity,
             performedBy: userId,
             referenceType: "STOCK_TRANSFER",
@@ -273,7 +271,7 @@ export const completeTransferServices = async (
         );
       }
 
-      // -----transfering stock from warehouse to warehouse
+      // -----transferring stock from warehouse to warehouse with batchId
       for (const item of transferData.items) {
         await transferStock(
           {
@@ -281,6 +279,7 @@ export const completeTransferServices = async (
             fromWarehouseId: transferData.fromWarehouseId,
             toWarehouseId: transferData.toWarehouseId,
             itemId: item.itemId,
+            batchId: item.batchId, // Pass batchId
             quantity: item.quantity,
             referenceId: transferData._id,
             performedBy: userId,
@@ -290,7 +289,6 @@ export const completeTransferServices = async (
         );
       }
 
-      // -----update data
       transferData.status = "COMPLETED";
       await transferData.save({ session });
 
@@ -307,10 +305,8 @@ export const cancelTransferServices = async (
   organizationId,
   userId,
 ) => {
-  // ------applying logic inside of a transaction
   const cancelTransfer = await mongoose.connection.transaction(
     async (session) => {
-      // ----getting transfer data
       const transferData = await Transfer.findOne({
         _id: trnasferId,
         organizationId,
@@ -330,7 +326,7 @@ export const cancelTransferServices = async (
         );
       }
 
-      // ------releasing reserved stock if reserved
+      // ------releasing reserved stock if reserved with batchId
       if (transferData.status === "APPROVED") {
         for (const item of transferData.items) {
           await releaseReservedStock(
@@ -338,6 +334,7 @@ export const cancelTransferServices = async (
               organizationId,
               warehouseId: transferData.fromWarehouseId,
               itemId: item.itemId,
+              batchId: item.batchId, // Pass batchId
               quantity: item.quantity,
               performedBy: userId,
               referenceType: "STOCK_TRANSFER",
@@ -349,7 +346,6 @@ export const cancelTransferServices = async (
         }
       }
 
-      // -----update data
       transferData.status = "CANCELLED";
       await transferData.save({ session });
 

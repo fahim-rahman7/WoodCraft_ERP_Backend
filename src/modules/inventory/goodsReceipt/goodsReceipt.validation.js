@@ -22,6 +22,9 @@ export const createGoodsReceiptSchema = z.object({
         itemId: z
           .string({ required_error: 'Item ID is required' })
           .regex(/^[0-9a-fA-F]{24}$/, 'Invalid item ID format'),
+        batchNumber: z
+          .string({ required_error: 'Batch number is required for each item' })
+          .trim(), // ব্যাচ নম্বর বাধ্যতামূলক করা হলো
         quantity: z.number().positive('Quantity must be greater than zero'),
         unitPrice: z.number().nonnegative('Unit price cannot be negative').optional(),
       })

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AppError } from "../../../utils/appError.js";
 import { Item } from "../item/item.model.js";
+import { Batch } from "../batch/batch.model.js"; // 🆕 Batch model import
 import { Stock } from "../stock/stock.model.js";
 import { Warehouse } from "../warehouse/warehouse.model.js";
 import { Adjustment } from "./adjustment.model.js";
@@ -24,7 +25,6 @@ export const createAdjustmentServices = async (
     throw new AppError("Warehouse not found", 404);
   }
 
-  // ----adjustment items with system quantity and difference
   const adjustmentItems = [];
 
   for (const item of items) {
@@ -38,21 +38,35 @@ export const createAdjustmentServices = async (
       throw new AppError(`Item not found: ${item.itemId}`, 404);
     }
 
-    // -----getting current stock of this item in this warehouse
+    // 🆕 ----checking batch exist and active
+    const batchExist = await Batch.findOne({
+      _id: item.batchId,
+      organizationId,
+      itemId: item.itemId,
+      warehouseId,
+      status: "ACTIVE",
+    });
+    if (!batchExist) {
+      throw new AppError(`Active batch not found for item ID: ${item.itemId}`, 404);
+    }
+
+    // -----getting current stock of this item & batch in this warehouse
     const stockExist = await Stock.findOne({
       organizationId,
       warehouseId,
       itemId: item.itemId,
+      batchId: item.batchId, // 🆕 Filtered by batchId
     });
     const systemQuantity = stockExist ? stockExist.quantity : 0;
 
-    // -----difference = physical - system (rounded to avoid decimal problem)
+    // -----difference = physical - system
     const difference = Number(
       (item.physicalQuantity - systemQuantity).toFixed(4),
     );
 
     adjustmentItems.push({
       itemId: item.itemId,
+      batchId: item.batchId, // 🆕 Included batchId
       systemQuantity,
       physicalQuantity: item.physicalQuantity,
       difference,
@@ -68,13 +82,11 @@ export const createAdjustmentServices = async (
     );
   }
 
-  //---- adjustment number generate
-  // -----finding last adjustment of this organization
+  // ----adjustment number generate
   const lastAdjustment = await Adjustment.findOne({ organizationId })
     .sort({ createdAt: -1 })
     .select("adjustmentNumber");
 
-  // -----generate new adjustment number (ADJ-0001, ADJ-0002 ...)
   const lastNumber = lastAdjustment
     ? parseInt(lastAdjustment.adjustmentNumber.split("-")[1])
     : 0;
@@ -102,18 +114,18 @@ export const adjustmentListServices = async (organizationId, query) => {
   const sortBy = query.sortBy || "createdAt";
   const sortOrder = query.sortOrder === "asc" ? 1 : -1;
 
-  // ----filter object
   const filter = { organizationId };
 
-  // -----filter object data add
   if (query.status) filter.status = query.status;
   if (query.reason) filter.reason = query.reason;
   if (query.warehouseId) filter.warehouseId = query.warehouseId;
   if (query.itemId) filter["items.itemId"] = query.itemId;
+  if (query.batchId) filter["items.batchId"] = query.batchId; // 🆕 Filter by batchId
 
   const adjustments = await Adjustment.find(filter)
     .populate("warehouseId", "name code")
     .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status") // 🆕 Populate batch info
     .populate("requestedBy", "name email")
     .sort({ [sortBy]: sortOrder })
     .skip(skip)
@@ -138,13 +150,13 @@ export const getSingleAdjustmentServices = async (
   adjustmentId,
   organizationId,
 ) => {
-  // ----getting adjustment data of this organization
   const adjustmentData = await Adjustment.findOne({
     _id: adjustmentId,
     organizationId,
   })
     .populate("warehouseId", "name code location")
     .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status") // 🆕 Populate batch info
     .populate("requestedBy", "name email")
     .populate("approvedBy", "name email");
 
@@ -161,7 +173,6 @@ export const approveAdjustmentServices = async (
   organizationId,
   userId,
 ) => {
-  // ----getting adjustment data of this organization
   const adjustmentData = await Adjustment.findOne({
     _id: adjustmentId,
     organizationId,
@@ -171,7 +182,6 @@ export const approveAdjustmentServices = async (
     throw new AppError("Adjustment not found", 404);
   }
 
-  // ----only pending adjustment can be approved
   if (adjustmentData.status !== "PENDING") {
     throw new AppError(
       `Only pending adjustment can be approved. Current status: ${adjustmentData.status}`,
@@ -179,7 +189,6 @@ export const approveAdjustmentServices = async (
     );
   }
 
-  // -----update data
   adjustmentData.status = "APPROVED";
   adjustmentData.approvedBy = userId;
   await adjustmentData.save();
@@ -192,7 +201,6 @@ export const cancelAdjustmentServices = async (
   adjustmentId,
   organizationId,
 ) => {
-  // ----getting adjustment data of this organization
   const adjustmentData = await Adjustment.findOne({
     _id: adjustmentId,
     organizationId,
@@ -202,7 +210,6 @@ export const cancelAdjustmentServices = async (
     throw new AppError("Adjustment not found", 404);
   }
 
-  // ----only pending or approved adjustment can be cancelled
   if (
     adjustmentData.status !== "PENDING" &&
     adjustmentData.status !== "APPROVED"
@@ -213,7 +220,6 @@ export const cancelAdjustmentServices = async (
     );
   }
 
-  // -----update data (no stock change, adjustment does not reserve stock)
   adjustmentData.status = "CANCELLED";
   await adjustmentData.save();
 
@@ -226,10 +232,8 @@ export const applyAdjustmentServices = async (
   organizationId,
   userId,
 ) => {
-  // ------applying logic inside of a transaction
   const applyAdjustment = await mongoose.connection.transaction(
     async (session) => {
-      // ----getting adjustment data of this organization
       const adjustmentData = await Adjustment.findOne({
         _id: adjustmentId,
         organizationId,
@@ -239,19 +243,16 @@ export const applyAdjustmentServices = async (
         throw new AppError("Adjustment not found", 404);
       }
 
-      // ----checking warehouse exist or not
       const warehouseExist = await Warehouse.findOne({
         _id: adjustmentData.warehouseId,
         organizationId,
         status: "ACTIVE",
       }).session(session);
 
-
       if (!warehouseExist) {
         throw new AppError("Warehouse not found", 404);
       }
 
-      // ----checking every item still exist or not
       for (const item of adjustmentData.items) {
         const itemExist = await Item.findOne({
           _id: item.itemId,
@@ -262,9 +263,19 @@ export const applyAdjustmentServices = async (
         if (!itemExist) {
           throw new AppError(`Item not found: ${item.itemId}`, 404);
         }
+
+        // 🆕 Check batch existence during apply
+        const batchExist = await Batch.findOne({
+          _id: item.batchId,
+          organizationId,
+          status: "ACTIVE",
+        }).session(session);
+
+        if (!batchExist) {
+          throw new AppError(`Batch not found or inactive: ${item.batchId}`, 404);
+        }
       }
 
-      // ----only approved adjustment can be applied
       if (adjustmentData.status !== "APPROVED") {
         throw new AppError(
           `Only approved adjustment can be applied. Current status: ${adjustmentData.status}`,
@@ -272,15 +283,15 @@ export const applyAdjustmentServices = async (
         );
       }
 
-      // ------updating stock of every item
+      // ------updating stock of every item with batchId
       for (const item of adjustmentData.items) {
-        // ----same quantity, nothing to change
         if (item.difference === 0) continue;
 
         const stockData = {
           organizationId,
           warehouseId: adjustmentData.warehouseId,
           itemId: item.itemId,
+          batchId: item.batchId, // 🆕 Pass batchId to stock service
           quantity: Math.abs(item.difference),
           referenceType: "STOCK_ADJUSTMENT",
           referenceId: adjustmentData._id,
@@ -288,18 +299,15 @@ export const applyAdjustmentServices = async (
           remarks: `Stock adjusted for ${adjustmentData.adjustmentNumber} (${adjustmentData.reason})`,
         };
 
-        // ----physical is more than system, increase stock
         if (item.difference > 0) {
           await increaseStock(stockData, session);
         }
 
-        // ----physical is less than system, decrease stock
         if (item.difference < 0) {
           await decreaseStock(stockData, session);
         }
       }
 
-      // -----update data
       adjustmentData.status = "APPLIED";
       await adjustmentData.save({ session });
 

@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 import { MaterialIssue } from './materialIssue.model.js';
 import { Warehouse } from '../../inventory/warehouse/warehouse.model.js';
 import { Item } from '../../inventory/item/item.model.js';
-import * as stockService from '../../inventory/stock/stock.service.js'; //  Inventory Module থেকে Stock Engine Import
+import { Batch } from '../../inventory/batch/batch.model.js'; // 🆕 Batch model import
+import * as stockService from '../../inventory/stock/stock.service.js';
 import { AppError } from '../../../utils/appError.js';
 
 const generateIssueNumber = async (organizationId) => {
@@ -25,6 +26,18 @@ export const createMaterialIssue = async (organizationId, userId, payload) => {
     const itemExists = await Item.findOne({ _id: item.itemId, organizationId });
     if (!itemExists) {
       throw new AppError(`Item not found with ID: ${item.itemId}`, 404);
+    }
+
+    // 🆕 Validate Batch existence and active status
+    const batchExists = await Batch.findOne({
+      _id: item.batchId,
+      organizationId,
+      itemId: item.itemId,
+      warehouseId: payload.warehouseId,
+      status: 'ACTIVE',
+    });
+    if (!batchExists) {
+      throw new AppError(`Active batch not found for item ID: ${item.itemId} with given batch ID`, 404);
     }
   }
 
@@ -54,6 +67,7 @@ export const getMaterialIssues = async (organizationId, query = {}) => {
   return await MaterialIssue.find(filter)
     .populate('warehouseId', 'name code')
     .populate('items.itemId', 'name sku unit')
+    .populate('items.batchId', 'batchNumber currentQuantity status') // 🆕 Populate batch info
     .populate('createdBy', 'name email')
     .sort({ createdAt: -1 });
 };
@@ -62,6 +76,7 @@ export const getMaterialIssueById = async (organizationId, id) => {
   const issue = await MaterialIssue.findOne({ _id: id, organizationId })
     .populate('warehouseId', 'name code location')
     .populate('items.itemId', 'name sku unit itemType woodAttributes')
+    .populate('items.batchId', 'batchNumber currentQuantity status') // 🆕 Populate batch info
     .populate('createdBy', 'name email');
 
   if (!issue) {
@@ -72,7 +87,7 @@ export const getMaterialIssueById = async (organizationId, id) => {
 };
 
 /**
- * Material Issue কনফার্ম করা এবং স্টক কমানো (Stock Engine decreaseStock hit করা)
+ * Material Issue কনফার্ম করা এবং স্টক কমানো (Stock Engine decreaseStock hit করা with batchId)
  */
 export const issueMaterial = async (organizationId, userId, id) => {
   const issue = await MaterialIssue.findOne({ _id: id, organizationId });
@@ -95,6 +110,7 @@ export const issueMaterial = async (organizationId, userId, id) => {
           organizationId,
           warehouseId: issue.warehouseId,
           itemId: item.itemId,
+          batchId: item.batchId, // 🆕 Pass batchId to decrease stock from specific batch
           quantity: item.quantity,
           referenceType: 'MATERIAL_ISSUE',
           referenceId: issue._id,

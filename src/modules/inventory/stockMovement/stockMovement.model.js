@@ -18,6 +18,12 @@ const stockMovementSchema = new mongoose.Schema(
       ref: 'Item',
       required: true,
     },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      required: true,
+      index: true,
+    },
     movementType: {
       type: String,
       enum: ['IN', 'OUT', 'RESERVE', 'RELEASE', 'TRANSFER_IN', 'TRANSFER_OUT', 'ADJUSTMENT'],

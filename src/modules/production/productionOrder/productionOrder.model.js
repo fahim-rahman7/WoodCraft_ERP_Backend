@@ -57,6 +57,13 @@ const productionOrderSchema = new mongoose.Schema(
       required: true,
     },
     requiredMaterials: [requiredMaterialSchema], // BOM থেকে অটো ক্যালকুলেট হবে
+    
+    // Produced batch reference for finished goods traceability
+    producedBatchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+    },
+
     status: {
       type: String,
       enum: ['DRAFT', 'PLANNED', 'IN_PRODUCTION', 'COMPLETED', 'CANCELLED'],

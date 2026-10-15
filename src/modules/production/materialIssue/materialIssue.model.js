@@ -7,6 +7,11 @@ const materialIssueItemSchema = new mongoose.Schema(
       ref: 'Item',
       required: true,
     },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      required: true,
+    },
     quantity: {
       type: Number,
       required: true,

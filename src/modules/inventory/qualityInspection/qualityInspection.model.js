@@ -7,6 +7,11 @@ const qualityInspectionItemSchema = new mongoose.Schema(
       ref: 'Item',
       required: true,
     },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      required: true,
+    },
     receivedQuantity: {
       type: Number,
       required: true,

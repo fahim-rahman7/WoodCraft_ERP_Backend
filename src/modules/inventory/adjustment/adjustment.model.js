@@ -26,6 +26,11 @@ const adjustmentSchema = new mongoose.Schema(
           ref: "Item",
           required: [true, "Item is required"],
         },
+        batchId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Batch",
+          required: [true, "Batch is required"],
+        },
         // ----quantity in system when adjustment was created
         systemQuantity: {
           type: Number,

@@ -4,6 +4,7 @@ import { BOM as Bom } from '../bom/bom.model.js';
 import { Stock } from '../../inventory/stock/stock.model.js';
 import { Warehouse } from '../../inventory/warehouse/warehouse.model.js';
 import { Item } from '../../inventory/item/item.model.js';
+import { Batch } from '../../inventory/batch/batch.model.js'; // 🆕 Batch model import
 import * as stockService from '../../inventory/stock/stock.service.js';
 import { AppError } from '../../../utils/appError.js';
 
@@ -22,7 +23,7 @@ export const createProductionOrder = async (organizationId, userId, payload) => 
   const targetItem = await Item.findOne({ _id: payload.targetItemId, organizationId, status: 'ACTIVE' });
   if (!targetItem) throw new AppError('Target item not found', 404);
 
-  // ২. BOM খুঁজে বের করা (Updated fields to match BOM model)
+  // ২. BOM খুঁজে বের করা
   let bomQuery = { organizationId, status: 'ACTIVE' };
   if (payload.bomId) {
     bomQuery._id = payload.bomId;
@@ -36,22 +37,21 @@ export const createProductionOrder = async (organizationId, userId, payload) => 
   }
 
   // ৩. BOM Calculation
-  // BOM Multiplier = Production Target Quantity / BOM Quantity
   const multiplier = payload.targetQuantity / (bom.quantity || 1);
-
   const calculatedMaterials = [];
 
-  // ৪. Check Stock
+  // ৪. Check Stock across all batches for each component
   for (const component of bom.components) {
     const requiredQty = component.quantity * multiplier;
 
-    const stockRecord = await Stock.findOne({
+    // 🆕 যেহেতু স্টক ব্যাচ-ওয়াইজ আলাদা, তাই সব ব্যাচ থেকে স্টক কুয়েরি করে যোগ করতে হবে
+    const stockRecords = await Stock.find({
       organizationId,
       warehouseId: payload.warehouseId,
       itemId: component.itemId,
     });
 
-    const currentStock = stockRecord ? stockRecord.availableQuantity : 0;
+    const currentStock = stockRecords.reduce((sum, record) => sum + record.availableQuantity, 0);
 
     calculatedMaterials.push({
       itemId: component.itemId,
@@ -125,46 +125,70 @@ export const startProduction = async (organizationId, id) => {
   return order;
 };
 
-export const completeProduction = async (organizationId, userId, id) => {
-    const order = await ProductionOrder.findOne({ _id: id, organizationId });
-  
-    if (!order) throw new AppError('Production Order not found', 404);
-    if (order.status !== 'IN_PRODUCTION') {
-      throw new AppError(`Cannot complete production from status '${order.status}'`, 400);
+export const completeProduction = async (organizationId, userId, id, payload = {}) => {
+  const order = await ProductionOrder.findOne({ _id: id, organizationId });
+
+  if (!order) throw new AppError('Production Order not found', 404);
+  if (order.status !== 'IN_PRODUCTION') {
+    throw new AppError(`Cannot complete production from status '${order.status}'`, 400);
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // 🆕 ১. ফিনিশড গুডসের জন্য নতুন ব্যাচ তৈরি করা (যেমন: FG-PO-PRD-20261015-0001)
+    const batchNumber = payload.batchNumber || `FG-${order.orderNumber}`;
+
+    const existingBatch = await Batch.findOne({ organizationId, batchNumber }).session(session);
+    if (existingBatch) {
+      throw new AppError(`Batch number '${batchNumber}' already exists`, 400);
     }
-  
-    const session = await mongoose.startSession();
-    session.startTransaction();
-  
-    try {
-      //  Raw Material কমানোর লজিকটি  এখন  Material Issue মডিউলের `issueMaterial` এপিআই হ্যান্ডেল করবে।
-      // শুধু Finished Goods তৈরি শেষ হলে Stock-এ যোগ করা হবে (Production Receipt)
-      await stockService.increaseStock(
-        {
-          organizationId,
-          warehouseId: order.warehouseId,
-          itemId: order.targetItemId,
-          quantity: order.targetQuantity,
-          referenceType: 'PRODUCTION_RECEIPT',
-          referenceId: order._id,
-          performedBy: userId,
-          remarks: `Finished goods produced via PO: ${order.orderNumber}`,
-        },
-        session
-      );
-  
-      // অর্ডার স্ট্যাটাস আপডেট করা
-      order.status = 'COMPLETED';
-      order.completedAt = new Date();
-      await order.save({ session });
-  
-      await session.commitTransaction();
-      session.endSession();
-  
-      return order;
-    } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      throw error;
-    }
-  };
+
+    const [newBatch] = await Batch.create(
+      [{
+        organizationId,
+        batchNumber,
+        itemId: order.targetItemId,
+        warehouseId: order.warehouseId,
+        initialQuantity: order.targetQuantity,
+        currentQuantity: order.targetQuantity,
+        receivedDate: new Date(),
+        status: 'ACTIVE',
+        remarks: `Produced via Production Order: ${order.orderNumber}`,
+      }],
+      { session }
+    );
+
+    // 🆕 ২. ফিনিশড গুডস স্টকে যোগ করা (নতুন ব্যাচ আইডি সহ)
+    await stockService.increaseStock(
+      {
+        organizationId,
+        warehouseId: order.warehouseId,
+        itemId: order.targetItemId,
+        batchId: newBatch._id, // Pass newly created batchId
+        quantity: order.targetQuantity,
+        referenceType: 'PRODUCTION_RECEIPT',
+        referenceId: order._id,
+        performedBy: userId,
+        remarks: `Finished goods produced via PO: ${order.orderNumber}, Batch: ${batchNumber}`,
+      },
+      session
+    );
+
+    // ৩. অর্ডার স্ট্যাটাস আপডেট করা
+    order.status = 'COMPLETED';
+    order.producedBatchId = newBatch._id;
+    order.completedAt = new Date();
+    await order.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return order;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};

@@ -15,87 +15,89 @@ const generateInspectionNumber = async (organizationId) => {
 };
 
 export const createQualityInspection = async (organizationId, userId, payload) => {
-    // ১. Goods Receipt চেক করা
-    const grn = await GoodsReceipt.findOne({
-      _id: payload.goodsReceiptId,
-      organizationId,
-    });
-    if (!grn) {
-      throw new AppError('Goods Receipt not found', 404);
+  // ১. Goods Receipt চেক করা
+  const grn = await GoodsReceipt.findOne({
+    _id: payload.goodsReceiptId,
+    organizationId,
+  });
+  if (!grn) {
+    throw new AppError('Goods Receipt not found', 404);
+  }
+
+  if (grn.status !== 'DRAFT') {
+    throw new AppError(`Cannot create Quality Inspection for a Goods Receipt with status '${grn.status}'`, 400);
+  }
+
+  // ২. Supplier ও Warehouse চেক করা
+  const supplierExist = await Supplier.findOne({ _id: payload.supplierId, organizationId, status: 'ACTIVE' });
+  if (!supplierExist) throw new AppError('Supplier not found or inactive', 404);
+
+  const warehouseExist = await Warehouse.findOne({ _id: payload.warehouseId, organizationId, status: 'ACTIVE' });
+  if (!warehouseExist) throw new AppError('Warehouse not found or inactive', 404);
+
+  // ৩. এই GRN এর বিপরীতে ইতিপূর্বে তৈরি হওয়া সকল Active Quality Inspection খুঁজে বের করা
+  const existingQIs = await QualityInspection.find({
+    goodsReceiptId: payload.goodsReceiptId,
+    organizationId,
+    status: { $ne: 'CANCELLED' },
+  });
+
+  // ৪. প্রতিটি আইটেম ভ্যালিডেশন এবং Accumulated Quantity চেক করা
+  const processedItems = [];
+  for (const item of payload.items) {
+    const itemExist = await Item.findOne({ _id: item.itemId, organizationId, status: 'ACTIVE' });
+    if (!itemExist) throw new AppError(`Item not found: ${item.itemId}`, 404);
+
+    const grnItem = grn.items.find((i) => i.itemId.toString() === item.itemId.toString());
+    if (!grnItem) {
+      throw new AppError(`Item with ID ${item.itemId} does not exist in the referenced Goods Receipt`, 400);
     }
-  
-    if (grn.status !== 'DRAFT') {
-      throw new AppError(`Cannot create Quality Inspection for a Goods Receipt with status '${grn.status}'`, 400);
+
+    // এই আইটেমের বিপরীতে ইতিপূর্বে কতটুকু কোয়ান্টিটি ইন্সপেক্ট করা হয়েছে তার যোগফল বের করা
+    const previousInspectedQty = existingQIs.reduce((sum, qi) => {
+      const found = qi.items.find((i) => i.itemId.toString() === item.itemId.toString());
+      return sum + (found ? found.receivedQuantity : 0);
+    }, 0);
+
+    const totalInspectedQty = previousInspectedQty + item.receivedQuantity;
+
+    // মোট ইন্সপেক্টেড পরিমাণ GRN-এর পরিমাণকে ছাড়িয়ে যেতে পারবে না
+    if (totalInspectedQty > grnItem.quantity) {
+      throw new AppError(
+        `Total inspected quantity (${totalInspectedQty}) exceeds GRN quantity (${grnItem.quantity}) for item ID ${item.itemId}. Already inspected: ${previousInspectedQty}`,
+        400
+      );
     }
-  
-    // ২. Supplier ও Warehouse চেক করা
-    const supplierExist = await Supplier.findOne({ _id: payload.supplierId, organizationId, status: 'ACTIVE' });
-    if (!supplierExist) throw new AppError('Supplier not found or inactive', 404);
-  
-    const warehouseExist = await Warehouse.findOne({ _id: payload.warehouseId, organizationId, status: 'ACTIVE' });
-    if (!warehouseExist) throw new AppError('Warehouse not found or inactive', 404);
-  
-    // ৩. এই GRN এর বিপরীতে ইতিপূর্বে তৈরি হওয়া সকল Active Quality Inspection খুঁজে বের করা
-    const existingQIs = await QualityInspection.find({
-      goodsReceiptId: payload.goodsReceiptId,
-      organizationId,
-      status: { $ne: 'CANCELLED' },
+
+    processedItems.push({
+      itemId: item.itemId,
+      batchId: grnItem.batchId, // 🆕 Grabbing batchId from the corresponding GRN item
+      receivedQuantity: item.receivedQuantity,
+      acceptedQuantity: item.acceptedQuantity,
+      rejectedQuantity: item.rejectedQuantity,
+      inspectionResult: item.inspectionResult || 'PASS',
+      remarks: item.remarks,
     });
-  
-    // ৪. প্রতিটি আইটেম ভ্যালিডেশন এবং Accumulated Quantity চেক করা
-    const processedItems = [];
-    for (const item of payload.items) {
-      const itemExist = await Item.findOne({ _id: item.itemId, organizationId, status: 'ACTIVE' });
-      if (!itemExist) throw new AppError(`Item not found: ${item.itemId}`, 404);
-  
-      const grnItem = grn.items.find((i) => i.itemId.toString() === item.itemId.toString());
-      if (!grnItem) {
-        throw new AppError(`Item with ID ${item.itemId} does not exist in the referenced Goods Receipt`, 400);
-      }
-  
-      // এই আইটেমের বিপরীতে ইতিপূর্বে কতটুকু কোয়ান্টিটি ইন্সপেক্ট করা হয়েছে তার যোগফল বের করা
-      const previousInspectedQty = existingQIs.reduce((sum, qi) => {
-        const found = qi.items.find((i) => i.itemId.toString() === item.itemId.toString());
-        return sum + (found ? found.receivedQuantity : 0);
-      }, 0);
-  
-      const totalInspectedQty = previousInspectedQty + item.receivedQuantity;
-  
-      // মোট ইন্সপেক্টেড পরিমাণ GRN-এর পরিমাণকে ছাড়িয়ে যেতে পারবে না
-      if (totalInspectedQty > grnItem.quantity) {
-        throw new AppError(
-          `Total inspected quantity (${totalInspectedQty}) exceeds GRN quantity (${grnItem.quantity}) for item ID ${item.itemId}. Already inspected: ${previousInspectedQty}`,
-          400
-        );
-      }
-  
-      processedItems.push({
-        itemId: item.itemId,
-        receivedQuantity: item.receivedQuantity,
-        acceptedQuantity: item.acceptedQuantity,
-        rejectedQuantity: item.rejectedQuantity,
-        inspectionResult: item.inspectionResult || 'PASS',
-        remarks: item.remarks,
-      });
-    }
-  
-    const inspectionNumber = await generateInspectionNumber(organizationId);
-  
-    const qualityInspection = await QualityInspection.create({
-      organizationId,
-      inspectionNumber,
-      goodsReceiptId: payload.goodsReceiptId,
-      supplierId: payload.supplierId,
-      warehouseId: payload.warehouseId,
-      inspectionDate: payload.inspectionDate || new Date(),
-      items: processedItems,
-      inspectedBy: userId,
-      remarks: payload.remarks,
-      status: 'PENDING',
-    });
-  
-    return qualityInspection;
-  };
+  }
+
+  const inspectionNumber = await generateInspectionNumber(organizationId);
+
+  const qualityInspection = await QualityInspection.create({
+    organizationId,
+    inspectionNumber,
+    goodsReceiptId: payload.goodsReceiptId,
+    supplierId: payload.supplierId,
+    warehouseId: payload.warehouseId,
+    inspectionDate: payload.inspectionDate || new Date(),
+    items: processedItems,
+    inspectedBy: userId,
+    remarks: payload.remarks,
+    status: 'PENDING',
+  });
+
+  return qualityInspection;
+};
+
 export const getQualityInspections = async (organizationId, query = {}) => {
   const filter = { organizationId };
   if (query.status) filter.status = query.status;
@@ -110,6 +112,7 @@ export const getQualityInspections = async (organizationId, query = {}) => {
     .populate('warehouseId', 'name code')
     .populate('goodsReceiptId', 'grnNumber')
     .populate('items.itemId', 'name sku unit')
+    .populate('items.batchId', 'batchNumber status') // 🆕 Populate batch info
     .populate('inspectedBy', 'name email')
     .sort({ createdAt: -1 });
 };
@@ -120,6 +123,7 @@ export const getQualityInspectionById = async (organizationId, id) => {
     .populate('warehouseId', 'name code location')
     .populate('goodsReceiptId', 'grnNumber status')
     .populate('items.itemId', 'name sku unit itemType woodAttributes')
+    .populate('items.batchId', 'batchNumber currentQuantity status') // 🆕 Populate batch info
     .populate('inspectedBy', 'name email');
 
   if (!qi) {
@@ -129,61 +133,62 @@ export const getQualityInspectionById = async (organizationId, id) => {
 };
 
 export const inspectQualityInspection = async (organizationId, userId, id) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-  
-    try {
-      const qi = await QualityInspection.findOne({ _id: id, organizationId }).session(session);
-      if (!qi) {
-        throw new AppError('Quality Inspection not found', 404);
-      }
-  
-      if (qi.status !== 'PENDING') {
-        throw new AppError(`Cannot inspect Quality Inspection with status '${qi.status}'`, 400);
-      }
-  
-      // ১. প্রতিটা আইটেমের acceptedQuantity সেন্ট্রাল স্টক সার্ভিসের মাধ্যমে স্টকে যোগ করা
-      for (const item of qi.items) {
-        if (item.acceptedQuantity > 0) {
-          await increaseStock(
-            {
-              organizationId,
-              warehouseId: qi.warehouseId,
-              itemId: item.itemId,
-              quantity: item.acceptedQuantity,
-              referenceType: 'GOODS_RECEIPT', // ba GOODS_RECEIPT
-              referenceId: qi.goodsReceiptId,
-              performedBy: userId,
-              remarks: `Stock increased via Quality Inspection: ${qi.inspectionNumber}`,
-            },
-            session
-          );
-        }
-      }
-  
-      // ২. QI স্ট্যাটাস INSPECTED করা
-      qi.status = 'INSPECTED';
-      qi.inspectedBy = userId;
-      await qi.save({ session });
-  
-      // ৩. সংশ্লিষ্ট Goods Receipt (GRN)-এর স্ট্যাটাস RECEIVED করা (যদি DRAFT থাকে)
-      const grn = await GoodsReceipt.findOne({ _id: qi.goodsReceiptId, organizationId }).session(session);
-      if (grn && grn.status === 'DRAFT') {
-        grn.status = 'RECEIVED';
-        grn.receivedAt = new Date();
-        await grn.save({ session });
-      }
-  
-      await session.commitTransaction();
-      session.endSession();
-  
-      return qi;
-    } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      throw error;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const qi = await QualityInspection.findOne({ _id: id, organizationId }).session(session);
+    if (!qi) {
+      throw new AppError('Quality Inspection not found', 404);
     }
-  };
+
+    if (qi.status !== 'PENDING') {
+      throw new AppError(`Cannot inspect Quality Inspection with status '${qi.status}'`, 400);
+    }
+
+    // ১. প্রতিটা আইটেমের acceptedQuantity সেন্ট্রাল স্টক সার্ভিসের মাধ্যমে নির্দিষ্ট ব্যাচে স্টকে যোগ করা
+    for (const item of qi.items) {
+      if (item.acceptedQuantity > 0) {
+        await increaseStock(
+          {
+            organizationId,
+            warehouseId: qi.warehouseId,
+            itemId: item.itemId,
+            batchId: item.batchId, // 🆕 Pass batchId to increase stock in the correct batch
+            quantity: item.acceptedQuantity,
+            referenceType: 'GOODS_RECEIPT',
+            referenceId: qi.goodsReceiptId,
+            performedBy: userId,
+            remarks: `Stock increased via Quality Inspection: ${qi.inspectionNumber}`,
+          },
+          session
+        );
+      }
+    }
+
+    // ২. QI স্ট্যাটাস INSPECTED করা
+    qi.status = 'INSPECTED';
+    qi.inspectedBy = userId;
+    await qi.save({ session });
+
+    // ৩. সংশ্লিষ্ট Goods Receipt (GRN)-এর স্ট্যাটাস RECEIVED করা (যদি DRAFT থাকে)
+    const grn = await GoodsReceipt.findOne({ _id: qi.goodsReceiptId, organizationId }).session(session);
+    if (grn && grn.status === 'DRAFT') {
+      grn.status = 'RECEIVED';
+      grn.receivedAt = new Date();
+      await grn.save({ session });
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return qi;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
 
 export const cancelQualityInspection = async (organizationId, id) => {
   const qi = await QualityInspection.findOne({ _id: id, organizationId });

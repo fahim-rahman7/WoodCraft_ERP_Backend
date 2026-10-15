@@ -5,12 +5,14 @@ export const getStockMovements = async (organizationId, query = {}) => {
 
   if (query.warehouseId) filter.warehouseId = query.warehouseId;
   if (query.itemId) filter.itemId = query.itemId;
+  if (query.batchId) filter.batchId = query.batchId; // 🆕 Filter by batchId if provided
   if (query.movementType) filter.movementType = query.movementType;
   if (query.referenceType) filter.referenceType = query.referenceType;
 
   return await StockMovement.find(filter)
     .populate('warehouseId', 'name code')
     .populate('itemId', 'name sku unit')
+    .populate('batchId', 'batchNumber status') // 🆕 Populate batch info
     .populate('performedBy', 'name email')
     .sort({ createdAt: -1 });
 };

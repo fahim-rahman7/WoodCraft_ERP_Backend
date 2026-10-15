@@ -20,6 +20,12 @@ const stockSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      required: true,
+      index: true,
+    },
     quantity: {
       type: Number,
       required: true,
@@ -44,6 +50,7 @@ const stockSchema = new mongoose.Schema(
   }
 );
 
-stockSchema.index({ organizationId: 1, warehouseId: 1, itemId: 1 }, { unique: true });
+// 🆕 Unique index updated to include batchId
+stockSchema.index({ organizationId: 1, warehouseId: 1, itemId: 1, batchId: 1 }, { unique: true });
 
 export const Stock = mongoose.model('Stock', stockSchema);

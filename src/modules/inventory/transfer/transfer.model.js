@@ -31,6 +31,11 @@ const transferSchema = new mongoose.Schema(
           ref: "Item",
           required: [true, "Item is required"],
         },
+        batchId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Batch",
+          required: [true, "Batch is required"],
+        },
         quantity: {
           type: Number,
           required: [true, "Quantity is required"],

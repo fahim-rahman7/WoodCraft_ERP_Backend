@@ -7,6 +7,14 @@ const goodsReceiptItemSchema = new mongoose.Schema(
       ref: 'Item',
       required: true,
     },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+    },
+    batchNumber: {
+      type: String,
+      trim: true,
+    },
     quantity: {
       type: Number,
       required: true,
