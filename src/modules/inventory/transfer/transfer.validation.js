@@ -3,6 +3,7 @@ import { z } from "zod";
 // -----single item validation
 const transferItemSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
+  batchId: z.string().min(1, "Batch is required"),
   quantity: z
     .number({ error: "Quantity is required and must be a number" })
     .positive("Quantity must be greater than zero"),

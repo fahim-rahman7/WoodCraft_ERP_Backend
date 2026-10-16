@@ -38,7 +38,7 @@ export const increaseStock = async (
         organizationId,
         warehouseId,
         itemId,
-        batchId, // 🆕 Added batchId in movement
+        batchId, // Added batchId in movement
         movementType: 'IN',
         referenceType,
         referenceId,
@@ -126,7 +126,7 @@ export const reserveStock = async (
         organizationId,
         warehouseId,
         itemId,
-        batchId, // 🆕 Added batchId
+        batchId, // Added batchId
         movementType: 'RESERVE',
         referenceType,
         referenceId,
@@ -170,7 +170,7 @@ export const releaseReservedStock = async (
         organizationId,
         warehouseId,
         itemId,
-        batchId, // 🆕 Added batchId
+        batchId, // Added batchId
         movementType: 'RELEASE',
         referenceType,
         referenceId,

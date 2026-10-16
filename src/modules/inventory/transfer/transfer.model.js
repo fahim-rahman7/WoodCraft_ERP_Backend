@@ -67,7 +67,7 @@ const transferSchema = new mongoose.Schema(
 );
 
 transferSchema.index(
-  { organizationId: 1, transferNumber: 1 },
+  { organizationId: 1, transferNumber: 1, },
   { unique: true },
 );
 

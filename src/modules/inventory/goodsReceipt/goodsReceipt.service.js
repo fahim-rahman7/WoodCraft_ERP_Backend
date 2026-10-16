@@ -5,7 +5,6 @@ import { Item } from '../item/item.model.js';
 import { Supplier } from '../supplier/supplier.model.js';
 import { PurchaseOrder } from '../purchase/purchase.model.js';
 import { Batch } from '../batch/batch.model.js'; // Batch model import
-import * as stockService from '../stock/stock.service.js';
 import { AppError } from '../../../utils/appError.js';
 
 // GRN Number জেনারেট করার ফাংশন
@@ -119,7 +118,7 @@ export const createGoodsReceipt = async (organizationId, userId, payload) => {
         throw new AppError(`Batch number '${item.batchNumber}' already exists`, 400);
       }
 
-      // 🆕 Create Batch record during GRN creation
+      // Create Batch record during GRN creation
       const [newBatch] = await Batch.create(
         [{
           organizationId,
@@ -189,7 +188,7 @@ export const getGoodsReceipts = async (organizationId, query = {}) => {
     .populate('supplierId', 'name phone email')
     .populate('warehouseId', 'name code')
     .populate('items.itemId', 'name sku unit')
-    .populate('items.batchId', 'batchNumber currentQuantity') // Populate batch info
+    .populate('items.batchId', 'batchNumber currentQuantity')
     .populate('createdBy', 'name email')
     .sort({ createdAt: -1 });
 };
@@ -198,7 +197,7 @@ export const getGoodsReceiptById = async (organizationId, id) => {
   const goodsReceipt = await GoodsReceipt.findOne({ _id: id, organizationId })
     .populate('warehouseId', 'name code location')
     .populate('items.itemId', 'name sku unit itemType woodAttributes')
-    .populate('items.batchId', 'batchNumber currentQuantity status') // Populate batch info
+    .populate('items.batchId', 'batchNumber currentQuantity status')
     .populate('createdBy', 'name email')
     .populate('supplierId', 'name phone email address');
 
@@ -210,7 +209,7 @@ export const getGoodsReceiptById = async (organizationId, id) => {
 };
 
 /**
- * GRN স্ট্যাটাস RECEIVED করা এবং স্টক বাড়ানো (Batch সহ Stock Engine hit করা)
+ * GRN স্ট্যাটাস RECEIVED করা (এখানে সরাসরি স্টক বাড়বে না, স্টক বাড়ানোর কাজ হবে Quality Inspection বা QI সম্পন্ন হওয়ার পর)[cite: 41]
  */
 export const receiveGoodsReceipt = async (organizationId, userId, id) => {
   const goodsReceipt = await GoodsReceipt.findOne({ _id: id, organizationId });
@@ -243,23 +242,9 @@ export const receiveGoodsReceipt = async (organizationId, userId, id) => {
       }
     }
 
-    // ---- Increase Stock with Batch ID
-    for (const item of goodsReceipt.items) {
-      await stockService.increaseStock(
-        {
-          organizationId,
-          warehouseId: goodsReceipt.warehouseId,
-          itemId: item.itemId,
-          batchId: item.batchId, // স্টক সার্ভিসে ব্যাচ আইডি পাস করা হচ্ছে
-          quantity: item.quantity,
-          referenceType: 'GOODS_RECEIPT',
-          referenceId: goodsReceipt._id,
-          performedBy: userId,
-          remarks: `Goods received via GRN: ${goodsReceipt.grnNumber}, Batch: ${item.batchNumber}`,
-        },
-        session
-      );
-    }
+    // Note: stockService.increaseStock call ekhane thakbe na. 
+    // Karor documentation onujayi GRN er por Quality Inspection (QI) hobe, 
+    // ebong QI inspect korlei accepted quantity stoke add hobe.[cite: 41]
 
     goodsReceipt.status = 'RECEIVED';
     goodsReceipt.receivedAt = new Date();

@@ -57,14 +57,20 @@ export const createNewTransferServices = async (
     if (!itemExist) {
       throw new AppError("Item not found", 404);
     }
+    console.log("DEBUGGING BATCH SEARCH:", {
+      batchId: item.batchId,
+      batchIdType: typeof item.batchId,
+      organizationId,
+    });
 
-    // 🆕 Validate Batch existence
+    // Validate Batch existence
     const batchExist = await Batch.findOne({
       _id: item.batchId,
       organizationId,
-      itemId: item.itemId,
-      status: "ACTIVE",
+      // itemId: item.itemId,
+      // status: "ACTIVE",
     });
+    console.log("BATCH FIND RESULT:", batchExist);
     if (!batchExist) {
       throw new AppError("Batch not found or inactive", 404);
     }
