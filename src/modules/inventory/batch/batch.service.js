@@ -2,7 +2,7 @@ import { Batch } from './batch.model.js';
 import { Item } from '../item/item.model.js';
 import { Supplier } from '../supplier/supplier.model.js';
 import { Warehouse } from '../warehouse/warehouse.model.js';
-import { AppError } from '../../../errors/AppError.js';
+import { AppError } from '../../../utils/appError.js';
 
 export const createBatch = async (organizationId, payload) => {
   const item = await Item.findOne({ _id: payload.itemId, organizationId, status: 'ACTIVE' });
