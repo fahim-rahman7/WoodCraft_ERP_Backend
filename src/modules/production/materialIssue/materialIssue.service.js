@@ -5,6 +5,8 @@ import { Item } from '../../inventory/item/item.model.js';
 import { Batch } from '../../inventory/batch/batch.model.js'; // 🆕 Batch model import
 import * as stockService from '../../inventory/stock/stock.service.js';
 import { AppError } from '../../../utils/appError.js';
+import { Stock } from '../../inventory/stock/stock.model.js';
+import { ProductionOrder } from '../productionOrder/productionOrder.model.js';
 
 const generateIssueNumber = async (organizationId) => {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -14,6 +16,7 @@ const generateIssueNumber = async (organizationId) => {
 };
 
 export const createMaterialIssue = async (organizationId, userId, payload) => {
+  // 1. Check if Warehouse exists
   const warehouseExists = await Warehouse.findOne({
     _id: payload.warehouseId,
     organizationId,
@@ -22,22 +25,76 @@ export const createMaterialIssue = async (organizationId, userId, payload) => {
     throw new AppError('Warehouse not found', 404);
   }
 
+  // 2. Check if Production Order exists
+  const prodOrder = await ProductionOrder.findOne({
+    _id: payload.productionOrderId,
+    organizationId,
+  });
+  if (!prodOrder) {
+    throw new AppError('Production Order not found', 404);
+  }
+
+  // 3. Ensure Production Order is IN_PRODUCTION
+  if (prodOrder.status !== 'IN_PRODUCTION') {
+    throw new AppError(`Cannot create Material Issue for a ${prodOrder.status.toLowerCase()} Production Order`, 400);
+  }
+
+  // 🆕 4. Fetch all existing Material Issues for this Production Order to calculate already requested/issued quantities
+  const existingMaterialIssues = await MaterialIssue.find({
+    productionOrderId: payload.productionOrderId,
+    organizationId,
+    status: { $ne: 'CANCELLED' }, // Cancelled baade baki shob active/draft issues gulo count korbe
+  });
+
+  // Map to track total quantity per itemId across existing material issues
+  const issuedMap = {};
+  existingMaterialIssues.forEach(issue => {
+    issue.items.forEach(i => {
+      const key = i.itemId.toString();
+      issuedMap[key] = (issuedMap[key] || 0) + i.quantity;
+    });
+  });
+
+  // 5. Validate Item, Stock, Batch, and BOM Limit
   for (const item of payload.items) {
-    const itemExists = await Item.findOne({ _id: item.itemId, organizationId });
-    if (!itemExists) {
-      throw new AppError(`Item not found with ID: ${item.itemId}`, 404);
+    const itemExist = await Item.findOne({ _id: item.itemId, organizationId, status: "ACTIVE" });
+    if (!itemExist) throw new AppError(`Item not found with ID: ${item.itemId}`, 404);
+
+    // Check if this item exists in Production Order's requiredMaterials (BOM)
+    const prodRequiredItem = prodOrder.requiredMaterials.find(
+      rm => rm.itemId.toString() === item.itemId.toString()
+    );
+    if (!prodRequiredItem) {
+      throw new AppError(`Item ID ${item.itemId} is not required for this Production Order`, 400);
     }
 
-    // 🆕 Validate Batch existence and active status
-    const batchExists = await Batch.findOne({
-      _id: item.batchId,
+    // Calculate total accumulated quantity (Already requested + New requested)
+    const alreadyIssued = issuedMap[item.itemId.toString()] || 0;
+    const totalRequested = alreadyIssued + item.quantity;
+
+    if (totalRequested > prodRequiredItem.requiredQuantity) {
+      throw new AppError(
+        `Total requested quantity (${totalRequested}) for item exceeds Production Order required limit (${prodRequiredItem.requiredQuantity}). Already issued/drafted: ${alreadyIssued}`,
+        400
+      );
+    }
+
+    // Check if stock exists for this item, warehouse, and batch with enough quantity
+    const stockExist = await Stock.findOne({
       organizationId,
-      itemId: item.itemId,
       warehouseId: payload.warehouseId,
-      status: 'ACTIVE',
+      itemId: item.itemId,
+      batchId: item.batchId,
     });
-    if (!batchExists) {
-      throw new AppError(`Active batch not found for item ID: ${item.itemId} with given batch ID`, 404);
+
+    if (!stockExist || stockExist.availableQuantity < item.quantity) {
+      throw new AppError(`Not enough stock or batch not found in this warehouse for item ID: ${item.itemId}`, 400);
+    }
+
+    // Verify batch is active
+    const batchExist = await Batch.findOne({ _id: item.batchId, organizationId, status: "ACTIVE" });
+    if (!batchExist) {
+      throw new AppError(`Batch is inactive or not found for item ID: ${item.itemId}`, 404);
     }
   }
 

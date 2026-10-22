@@ -4,6 +4,9 @@ const materialIssueItemSchema = z.object({
   itemId: z.string({
     required_error: 'Item ID is required',
   }),
+  batchId: z.string({
+    required_error: 'Batch ID is required',
+  }),
   quantity: z
     .number({
       required_error: 'Quantity is required',

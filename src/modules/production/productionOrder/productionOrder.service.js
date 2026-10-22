@@ -7,6 +7,7 @@ import { Item } from '../../inventory/item/item.model.js';
 import { Batch } from '../../inventory/batch/batch.model.js'; // 🆕 Batch model import
 import * as stockService from '../../inventory/stock/stock.service.js';
 import { AppError } from '../../../utils/appError.js';
+import { MaterialIssue } from '../materialIssue/materialIssue.model.js';
 
 const generateOrderNumber = async (organizationId) => {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -133,11 +134,22 @@ export const completeProduction = async (organizationId, userId, id, payload = {
     throw new AppError(`Cannot complete production from status '${order.status}'`, 400);
   }
 
+  // Strict Validation: Check if Material Issue (MIN) exists and is ISSUED for this production order
+  const minExists = await MaterialIssue.findOne({
+    productionOrderId: id,
+    organizationId,
+    status: 'ISSUED', //  system-er issued status onujayi ekhane status check hobe
+  });
+
+  if (!minExists) {
+    throw new AppError('Cannot complete production order without issuing raw materials via Material Issue (MIN)', 400);
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // 🆕 ১. ফিনিশড গুডসের জন্য নতুন ব্যাচ তৈরি করা (যেমন: FG-PO-PRD-20261015-0001)
+    // ফিনিশড গুডসের জন্য নতুন ব্যাচ তৈরি করা (যেমন: FG-PO-PRD-20261015-0001)
     const batchNumber = payload.batchNumber || `FG-${order.orderNumber}`;
 
     const existingBatch = await Batch.findOne({ organizationId, batchNumber }).session(session);
@@ -160,7 +172,7 @@ export const completeProduction = async (organizationId, userId, id, payload = {
       { session }
     );
 
-    // 🆕 ২. ফিনিশড গুডস স্টকে যোগ করা (নতুন ব্যাচ আইডি সহ)
+    // ফিনিশড গুডস স্টকে যোগ করা (নতুন ব্যাচ আইডি সহ)
     await stockService.increaseStock(
       {
         organizationId,
