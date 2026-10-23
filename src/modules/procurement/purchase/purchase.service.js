@@ -1,5 +1,5 @@
 import { PurchaseOrder } from './purchase.model.js';
-import { Supplier } from '../supplier/supplier.model.js';
+import { Supplier } from '../../procurement/supplier/supplier.model.js';
 import { Item } from '../item/item.model.js';
 import { AppError } from '../../../utils/appError.js';
 
