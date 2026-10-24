@@ -79,3 +79,43 @@ export const createScrapsServices = async (organizationId, userId, payload) => {
 
   return scrap;
 };
+
+// --------get scraps list
+export const scrapsListServices = async (organizationId, query) => {
+  const limit = query.limit ? Number(query.limit) : 10;
+  const page = query.page ? Number(query.page) : 1;
+  const skip = (page - 1) * limit;
+  const sortBy = query.sortBy || "createdAt";
+  const sortOrder = query.sortOrder === "asc" ? 1 : -1;
+
+  const filter = { organizationId };
+
+  if (query.status) filter.status = query.status;
+  if (query.warehouseId) filter.warehouseId = query.warehouseId;
+  if (query.itemId) filter["items.itemId"] = query.itemId;
+  if (query.batchId) filter["items.batchId"] = query.batchId;
+  if (query.reason) filter["items.reason"] = query.reason;
+
+  const scraps = await Scrap.find(filter)
+    .populate("warehouseId", "name code")
+    .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status")
+    .populate("requestedBy", "name email")
+    .populate("approvedBy", "name email")
+    .sort({ [sortBy]: sortOrder })
+    .skip(skip)
+    .limit(limit);
+
+  const totalScrapsCount = await Scrap.countDocuments(filter);
+  const totalPage = Math.ceil(totalScrapsCount / limit);
+
+  return {
+    data: scraps,
+    meta: {
+      page,
+      limit,
+      totalPage,
+      totalScrapsCount,
+    },
+  };
+};

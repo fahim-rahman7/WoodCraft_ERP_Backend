@@ -15,4 +15,7 @@ router.use(protect, requireOrgContext, checkOrgRole("OWNER", "MANAGER"));
 // ------create new scraps
 router.post("/", validate(createScrapsSchema), scrapsController.createScraps);
 
+// ---------get scraps list
+router.get("/", scrapsController.getScrapsList);
+
 export default router;
