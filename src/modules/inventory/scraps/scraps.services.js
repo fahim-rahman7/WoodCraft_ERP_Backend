@@ -119,3 +119,22 @@ export const scrapsListServices = async (organizationId, query) => {
     },
   };
 };
+
+// --------get single scraps
+export const getSingleScrapsServices = async (scrapId, organizationId) => {
+  const scrapData = await Scrap.findOne({
+    _id: scrapId,
+    organizationId,
+  })
+    .populate("warehouseId", "name code location")
+    .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status")
+    .populate("requestedBy", "name email")
+    .populate("approvedBy", "name email");
+
+  if (!scrapData) {
+    throw new AppError("Scrap not found", 404);
+  }
+
+  return scrapData;
+};

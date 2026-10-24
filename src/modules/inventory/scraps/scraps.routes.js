@@ -6,7 +6,7 @@ import {
 } from "../../../middlewares/org.middleware.js";
 import { validate } from "../../../middlewares/validate.middleware.js";
 import * as scrapsController from "./scraps.controller.js";
-import { createScrapsSchema } from "./scraps.validation.js";
+import { createScrapsSchema, scrapsIdParamsSchema } from "./scraps.validation.js";
 
 const router = Router();
 
@@ -17,5 +17,12 @@ router.post("/", validate(createScrapsSchema), scrapsController.createScraps);
 
 // ---------get scraps list
 router.get("/", scrapsController.getScrapsList);
+
+// ---------get single scraps
+router.get(
+  "/:id",
+  validate(scrapsIdParamsSchema, "params"),
+  scrapsController.getSingleScraps,
+);
 
 export default router;
