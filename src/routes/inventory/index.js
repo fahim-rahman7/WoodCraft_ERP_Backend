@@ -11,6 +11,7 @@ import purchaseRoutes from "../../modules/inventory/purchase/purchase.routes.js"
 import adjustmentRoutes from '../../modules/inventory/adjustment/adjustment.routes.js';
 import qualityInspectionRoutes from '../../modules/inventory/qualityInspection/qualityInspection.router.js';
 import batchRoutes from '../../modules/inventory/batch/batch.routes.js';
+import scrapsRoutes from '../../modules/inventory/scraps/scraps.routes.js';
 
 
 const router = Router();
@@ -28,6 +29,7 @@ router.use('/purchase', purchaseRoutes);
 router.use('/adjustments', adjustmentRoutes);
 router.use('/quality-inspections', qualityInspectionRoutes);
 router.use('/batch', batchRoutes);
+router.use('/scraps', scrapsRoutes);
 
 
 
