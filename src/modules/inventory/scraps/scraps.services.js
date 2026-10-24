@@ -1,9 +1,11 @@
+import mongoose from "mongoose";
 import { AppError } from "../../../utils/appError.js";
 import { Item } from "../item/item.model.js";
 import { Batch } from "../batch/batch.model.js";
 import { Stock } from "../stock/stock.model.js";
 import { Warehouse } from "../warehouse/warehouse.model.js";
 import { Scrap } from "./scraps.model.js";
+import { reserveStock } from "../stock/stock.service.js";
 
 // -----create new scraps
 export const createScrapsServices = async (organizationId, userId, payload) => {
@@ -137,4 +139,54 @@ export const getSingleScrapsServices = async (scrapId, organizationId) => {
   }
 
   return scrapData;
+};
+
+// --------approve scraps
+export const approveScrapsServices = async (scrapId, organizationId, userId) => {
+  const approveScrap = await mongoose.connection.transaction(
+    async (session) => {
+      const scrapData = await Scrap.findOne({
+        _id: scrapId,
+        organizationId,
+      }).session(session);
+
+      if (!scrapData) {
+        throw new AppError("Scrap not found", 404);
+      }
+
+      // ----checking scrap status pending or not
+      if (scrapData.status !== "PENDING") {
+        throw new AppError(
+          `Only pending scrap can be approved. Current status: ${scrapData.status}`,
+          400,
+        );
+      }
+
+      // ------reserving scrap stock with batchId
+      for (const item of scrapData.items) {
+        await reserveStock(
+          {
+            organizationId,
+            warehouseId: scrapData.warehouseId,
+            itemId: item.itemId,
+            batchId: item.batchId,
+            quantity: item.quantity,
+            referenceType: "SCRAP",
+            referenceId: scrapData._id,
+            performedBy: userId,
+            remarks: `Stock reserved for scrap ${scrapData.scrapNumber}`,
+          },
+          session,
+        );
+      }
+
+      scrapData.status = "APPROVED";
+      scrapData.approvedBy = userId;
+      await scrapData.save({ session });
+
+      return scrapData;
+    },
+  );
+
+  return approveScrap;
 };

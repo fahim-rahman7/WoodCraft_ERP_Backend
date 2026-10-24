@@ -1,6 +1,7 @@
 import { ApiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import {
+  approveScrapsServices,
   createScrapsServices,
   getSingleScrapsServices,
   scrapsListServices,
@@ -29,4 +30,15 @@ export const getSingleScraps = asyncHandler(async (req, res) => {
   const scrap = await getSingleScrapsServices(req.params.id, req.organizationId);
 
   new ApiResponse(200, "Scrap fetched successfully", scrap).send(res);
+});
+
+// ------approve scraps
+export const approveScraps = asyncHandler(async (req, res) => {
+  const scrap = await approveScrapsServices(
+    req.params.id,
+    req.organizationId,
+    req.user.id,
+  );
+
+  new ApiResponse(200, "Scrap approved successfully", scrap).send(res);
 });

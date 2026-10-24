@@ -25,4 +25,11 @@ router.get(
   scrapsController.getSingleScraps,
 );
 
+// ---------approve scraps
+router.post(
+  "/:id/approve",
+  validate(scrapsIdParamsSchema, "params"),
+  scrapsController.approveScraps,
+);
+
 export default router;
