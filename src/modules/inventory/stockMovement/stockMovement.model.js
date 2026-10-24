@@ -39,6 +39,7 @@ const stockMovementSchema = new mongoose.Schema(
         'STOCK_ADJUSTMENT',
         'INITIAL_STOCK',
         'PRODUCTION_RECEIPT',
+        'SCRAP',
       ],
       required: true,
     },

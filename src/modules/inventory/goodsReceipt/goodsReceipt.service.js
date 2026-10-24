@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 import { GoodsReceipt } from './goodsReceipt.model.js';
 import { Warehouse } from '../warehouse/warehouse.model.js';
 import { Item } from '../item/item.model.js';
-import { Supplier } from '../supplier/supplier.model.js';
-import { PurchaseOrder } from '../purchase/purchase.model.js';
+import { Supplier } from '../../procurement/supplier/supplier.model.js';
+import { PurchaseOrder } from '../../procurement/purchase/purchase.model.js';
 import { Batch } from '../batch/batch.model.js'; // Batch model import
 import { AppError } from '../../../utils/appError.js';
 

@@ -7,7 +7,7 @@ import {
 } from '../goodsReceipt/goodsReceipt.model.js';
 import {
   Supplier
-} from '../supplier/supplier.model.js';
+} from '../../procurement/supplier/supplier.model.js';
 import {
   Warehouse
 } from '../warehouse/warehouse.model.js';
