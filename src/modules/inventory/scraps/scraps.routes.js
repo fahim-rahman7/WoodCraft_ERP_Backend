@@ -32,4 +32,11 @@ router.post(
   scrapsController.approveScraps,
 );
 
+// ---------apply scraps
+router.post(
+  "/:id/apply",
+  validate(scrapsIdParamsSchema, "params"),
+  scrapsController.applyScraps,
+);
+
 export default router;

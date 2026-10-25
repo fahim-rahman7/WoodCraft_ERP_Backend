@@ -5,7 +5,11 @@ import { Batch } from "../batch/batch.model.js";
 import { Stock } from "../stock/stock.model.js";
 import { Warehouse } from "../warehouse/warehouse.model.js";
 import { Scrap } from "./scraps.model.js";
-import { reserveStock } from "../stock/stock.service.js";
+import {
+  decreaseStock,
+  releaseReservedStock,
+  reserveStock,
+} from "../stock/stock.service.js";
 
 // -----create new scraps
 export const createScrapsServices = async (organizationId, userId, payload) => {
@@ -189,4 +193,67 @@ export const approveScrapsServices = async (scrapId, organizationId, userId) => 
   );
 
   return approveScrap;
+};
+
+// --------apply scraps
+export const applyScrapsServices = async (scrapId, organizationId, userId) => {
+  const applyScrap = await mongoose.connection.transaction(async (session) => {
+    const scrapData = await Scrap.findOne({
+      _id: scrapId,
+      organizationId,
+    }).session(session);
+
+    if (!scrapData) {
+      throw new AppError("Scrap not found", 404);
+    }
+
+    // ----checking scrap status approved or not
+    if (scrapData.status !== "APPROVED") {
+      throw new AppError(
+        `Only approved scrap can be applied. Current status: ${scrapData.status}`,
+        400,
+      );
+    }
+
+    for (const item of scrapData.items) {
+      // ------releasing reserved stock with batchId
+      await releaseReservedStock(
+        {
+          organizationId,
+          warehouseId: scrapData.warehouseId,
+          itemId: item.itemId,
+          batchId: item.batchId,
+          quantity: item.quantity,
+          referenceType: "SCRAP",
+          referenceId: scrapData._id,
+          performedBy: userId,
+          remarks: `Reserved stock released for scrap ${scrapData.scrapNumber}`,
+        },
+        session,
+      );
+
+      // ------decreasing scrap stock from batch
+      await decreaseStock(
+        {
+          organizationId,
+          warehouseId: scrapData.warehouseId,
+          itemId: item.itemId,
+          batchId: item.batchId,
+          quantity: item.quantity,
+          referenceType: "SCRAP",
+          referenceId: scrapData._id,
+          performedBy: userId,
+          remarks: `Stock scrapped for ${scrapData.scrapNumber} (${item.reason})`,
+        },
+        session,
+      );
+    }
+
+    scrapData.status = "APPLIED";
+    await scrapData.save({ session });
+
+    return scrapData;
+  });
+
+  return applyScrap;
 };
