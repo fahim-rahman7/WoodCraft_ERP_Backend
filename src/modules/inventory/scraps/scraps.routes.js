@@ -39,4 +39,11 @@ router.post(
   scrapsController.applyScraps,
 );
 
+// ---------cancel scraps
+router.post(
+  "/:id/cancel",
+  validate(scrapsIdParamsSchema, "params"),
+  scrapsController.cancelScraps,
+);
+
 export default router;

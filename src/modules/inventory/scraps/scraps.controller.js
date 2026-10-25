@@ -3,6 +3,7 @@ import { asyncHandler } from "../../../utils/asyncHandler.js";
 import {
   applyScrapsServices,
   approveScrapsServices,
+  cancelScrapsServices,
   createScrapsServices,
   getSingleScrapsServices,
   scrapsListServices,
@@ -53,4 +54,15 @@ export const applyScraps = asyncHandler(async (req, res) => {
   );
 
   new ApiResponse(200, "Scrap applied successfully", scrap).send(res);
+});
+
+// ------cancel scraps
+export const cancelScraps = asyncHandler(async (req, res) => {
+  const scrap = await cancelScrapsServices(
+    req.params.id,
+    req.organizationId,
+    req.user.id,
+  );
+
+  new ApiResponse(200, "Scrap cancelled successfully", scrap).send(res);
 });

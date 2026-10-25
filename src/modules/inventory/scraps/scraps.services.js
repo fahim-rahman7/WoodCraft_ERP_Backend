@@ -257,3 +257,52 @@ export const applyScrapsServices = async (scrapId, organizationId, userId) => {
 
   return applyScrap;
 };
+
+// --------cancel scraps
+export const cancelScrapsServices = async (scrapId, organizationId, userId) => {
+  const cancelScrap = await mongoose.connection.transaction(async (session) => {
+    const scrapData = await Scrap.findOne({
+      _id: scrapId,
+      organizationId,
+    }).session(session);
+
+    if (!scrapData) {
+      throw new AppError("Scrap not found", 404);
+    }
+
+    // ----checking scrap status pending or approved
+    if (scrapData.status !== "PENDING" && scrapData.status !== "APPROVED") {
+      throw new AppError(
+        `Only pending or approved scrap can be cancelled. Current status: ${scrapData.status}`,
+        400,
+      );
+    }
+
+    // ------releasing reserved stock if approved
+    if (scrapData.status === "APPROVED") {
+      for (const item of scrapData.items) {
+        await releaseReservedStock(
+          {
+            organizationId,
+            warehouseId: scrapData.warehouseId,
+            itemId: item.itemId,
+            batchId: item.batchId,
+            quantity: item.quantity,
+            referenceType: "SCRAP",
+            referenceId: scrapData._id,
+            performedBy: userId,
+            remarks: `Reserved stock released for cancelled scrap ${scrapData.scrapNumber}`,
+          },
+          session,
+        );
+      }
+    }
+
+    scrapData.status = "CANCELLED";
+    await scrapData.save({ session });
+
+    return scrapData;
+  });
+
+  return cancelScrap;
+};
