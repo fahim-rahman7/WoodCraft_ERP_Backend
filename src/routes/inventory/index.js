@@ -12,6 +12,8 @@ import batchRoutes from '../../modules/inventory/batch/batch.routes.js';
 import scrapsRoutes from '../../modules/inventory/scrap/scrap.routes.js';
 
 
+
+
 const router = Router();
 
 // Endpoint path: /api/v1/inventory/warehouses
@@ -26,6 +28,7 @@ router.use('/adjustments', adjustmentRoutes);
 router.use('/quality-inspections', qualityInspectionRoutes);
 router.use('/batch', batchRoutes);
 router.use('/scraps', scrapsRoutes);
+
 
 
 
