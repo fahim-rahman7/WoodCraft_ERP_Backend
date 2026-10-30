@@ -9,7 +9,7 @@ import categoryRoutes from "../../modules/inventory/category/category.routes.js"
 import adjustmentRoutes from '../../modules/inventory/adjustment/adjustment.routes.js';
 import qualityInspectionRoutes from '../../modules/inventory/qualityInspection/qualityInspection.router.js';
 import batchRoutes from '../../modules/inventory/batch/batch.routes.js';
-import scrapsRoutes from '../../modules/inventory/scraps/scraps.routes.js';
+import scrapsRoutes from '../../modules/inventory/scrap/scrap.routes.js';
 
 
 const router = Router();

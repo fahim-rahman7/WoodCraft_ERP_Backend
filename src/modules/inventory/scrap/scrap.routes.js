@@ -5,8 +5,8 @@ import {
   requireOrgContext,
 } from "../../../middlewares/org.middleware.js";
 import { validate } from "../../../middlewares/validate.middleware.js";
-import * as scrapsController from "./scraps.controller.js";
-import { createScrapsSchema, scrapsIdParamsSchema } from "./scraps.validation.js";
+import * as scrapsController from "./scrap.controller.js";
+import { createScrapsSchema, scrapsIdParamsSchema } from "./scrap.validation.js";
 
 const router = Router();
 

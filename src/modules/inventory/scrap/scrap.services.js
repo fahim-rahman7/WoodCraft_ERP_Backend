@@ -4,7 +4,7 @@ import { Item } from "../item/item.model.js";
 import { Batch } from "../batch/batch.model.js";
 import { Stock } from "../stock/stock.model.js";
 import { Warehouse } from "../warehouse/warehouse.model.js";
-import { Scrap } from "./scraps.model.js";
+import { Scrap } from "./scrap.model.js";
 import {
   decreaseStock,
   releaseReservedStock,
@@ -41,7 +41,6 @@ export const createScrapsServices = async (organizationId, userId, payload) => {
       _id: item.batchId,
       organizationId,
       itemId: item.itemId,
-      warehouseId,
       status: "ACTIVE",
     });
     if (!batchExist) {

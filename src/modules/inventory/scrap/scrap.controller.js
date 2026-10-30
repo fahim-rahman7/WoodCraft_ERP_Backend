@@ -7,7 +7,7 @@ import {
   createScrapsServices,
   getSingleScrapsServices,
   scrapsListServices,
-} from "./scraps.services.js";
+} from "./scrap.services.js";
 
 // -----create scraps controller
 export const createScraps = asyncHandler(async (req, res) => {
