@@ -11,6 +11,8 @@ import qualityInspectionRoutes from '../../modules/inventory/qualityInspection/q
 import batchRoutes from '../../modules/inventory/batch/batch.routes.js';
 
 
+
+
 const router = Router();
 
 // Endpoint path: /api/v1/inventory/warehouses
@@ -24,6 +26,7 @@ router.use('/category', categoryRoutes);
 router.use('/adjustments', adjustmentRoutes);
 router.use('/quality-inspections', qualityInspectionRoutes);
 router.use('/batch', batchRoutes);
+
 
 
 

@@ -1,18 +1,18 @@
-import mongoose from 'mongoose';
-import { AppError } from '../../../utils/appError.js';
-import { Wip } from './wip.model.js';
-import { WorkOrder } from '../workOrder/workOrder.model.js';
-import { ProductionOrder } from '../productionOrder/productionOrder.model.js';
-import { Warehouse } from '../../inventory/warehouse/warehouse.model.js';
+import mongoose from "mongoose";
+import { AppError } from "../../../utils/appError.js";
+import { Wip } from "./wip.model.js";
+import { WorkOrder } from "../workOrder/workOrder.model.js";
+import { ProductionOrder } from "../productionOrder/productionOrder.model.js";
+import { Warehouse } from "../../inventory/warehouse/warehouse.model.js";
 
-const ACTIVE_WIP_STATUSES = ['OPEN', 'IN_PROGRESS', 'ON_HOLD'];
-const EDITABLE_WIP_STATUSES = ['IN_PROGRESS', 'ON_HOLD'];
+const ACTIVE_WIP_STATUSES = ["OPEN", "IN_PROGRESS", "ON_HOLD"];
+const EDITABLE_WIP_STATUSES = ["IN_PROGRESS", "ON_HOLD"];
 const EPSILON = 1e-6;
 
 const generateWipNumber = async (organizationId) => {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const count = await Wip.countDocuments({ organizationId });
-  const sequence = String(count + 1).padStart(4, '0');
+  const sequence = String(count + 1).padStart(4, "0");
   return `WIP-${dateStr}-${sequence}`;
 };
 
@@ -21,15 +21,25 @@ const appendRemarks = (existing, addition) => {
   return existing ? `${existing} | ${addition}` : addition;
 };
 
+const toObjectIdOrFail = (value, label) => {
+  if (!/^[a-f\d]{24}$/i.test(String(value))) {
+    throw new AppError(`Invalid ${label}`, 400);
+  }
+  return new mongoose.Types.ObjectId(value);
+};
+
 const getWipOrFail = async (organizationId, id) => {
   const wip = await Wip.findOne({ _id: id, organizationId });
-  if (!wip) throw new AppError('WIP record not found', 404);
+  if (!wip) throw new AppError("WIP record not found", 404);
   return wip;
 };
 
 const getWorkOrderOrFail = async (organizationId, workOrderId) => {
-  const workOrder = await WorkOrder.findOne({ _id: workOrderId, organizationId });
-  if (!workOrder) throw new AppError('Work Order not found', 404);
+  const workOrder = await WorkOrder.findOne({
+    _id: workOrderId,
+    organizationId,
+  });
+  if (!workOrder) throw new AppError("Work Order not found", 404);
   return workOrder;
 };
 
@@ -38,7 +48,8 @@ const getProductionOrderOrFail = async (organizationId, productionOrderId) => {
     _id: productionOrderId,
     organizationId,
   });
-  if (!productionOrder) throw new AppError('Linked Production Order not found', 404);
+  if (!productionOrder)
+    throw new AppError("Linked Production Order not found", 404);
   return productionOrder;
 };
 
@@ -47,42 +58,56 @@ const getProductionOrderOrFail = async (organizationId, productionOrderId) => {
  * Conditional pipeline update ব্যবহার করা হয়েছে যাতে concurrent update-এ
  * target quantity কখনোও overshoot না করে।
  */
-const syncWorkOrderProgress = async (organizationId, workOrder, completedDelta) => {
+const syncWorkOrderProgress = async (
+  organizationId,
+  workOrder,
+  completedDelta,
+) => {
   if (!completedDelta || completedDelta <= 0) return;
 
-  const maxAllowed = Number((workOrder.targetQuantity - completedDelta).toFixed(3));
+  const maxAllowed = Number(
+    (workOrder.targetQuantity - completedDelta).toFixed(3),
+  );
 
   const updatedWorkOrder = await WorkOrder.findOneAndUpdate(
     {
       _id: workOrder._id,
       organizationId,
-      status: { $in: ['PENDING', 'IN_PROGRESS'] },
+      status: { $in: ["PENDING", "IN_PROGRESS"] },
       completedQuantity: { $lte: maxAllowed },
     },
     [
-      { $set: { completedQuantity: { $add: ['$completedQuantity', completedDelta] } } },
+      {
+        $set: {
+          completedQuantity: { $add: ["$completedQuantity", completedDelta] },
+        },
+      },
       {
         $set: {
           status: {
             $cond: [
-              { $gte: ['$completedQuantity', '$targetQuantity'] },
-              'COMPLETED',
-              '$status',
+              { $gte: ["$completedQuantity", "$targetQuantity"] },
+              "COMPLETED",
+              "$status",
             ],
           },
           endDate: {
-            $cond: [{ $gte: ['$completedQuantity', '$targetQuantity'] }, '$$NOW', '$endDate'],
+            $cond: [
+              { $gte: ["$completedQuantity", "$targetQuantity"] },
+              "$$NOW",
+              "$endDate",
+            ],
           },
         },
       },
     ],
-    { new: true }
+    { returnDocument: "after", updatePipeline: true },
   );
 
   if (!updatedWorkOrder) {
     throw new AppError(
       `Cannot record ${completedDelta} completed unit(s): Work Order '${workOrder.workOrderNumber}' target quantity (${workOrder.targetQuantity}) would be exceeded`,
-      409
+      409,
     );
   }
 
@@ -91,25 +116,28 @@ const syncWorkOrderProgress = async (organizationId, workOrder, completedDelta) 
 
 export const createWip = async (organizationId, userId, payload) => {
   // 1. Work Order validate
-  const workOrder = await getWorkOrderOrFail(organizationId, payload.workOrderId);
+  const workOrder = await getWorkOrderOrFail(
+    organizationId,
+    payload.workOrderId,
+  );
 
-  if (workOrder.status !== 'IN_PROGRESS') {
+  if (workOrder.status !== "IN_PROGRESS") {
     throw new AppError(
       `Cannot create a WIP record for a '${workOrder.status}' Work Order. Please start the work order first.`,
-      400
+      400,
     );
   }
 
   // 2. Linked Production Order validate
   const productionOrder = await getProductionOrderOrFail(
     organizationId,
-    workOrder.productionOrderId
+    workOrder.productionOrderId,
   );
 
-  if (productionOrder.status !== 'IN_PRODUCTION') {
+  if (productionOrder.status !== "IN_PRODUCTION") {
     throw new AppError(
       `Cannot create WIP for a '${productionOrder.status}' Production Order`,
-      400
+      400,
     );
   }
 
@@ -118,26 +146,31 @@ export const createWip = async (organizationId, userId, payload) => {
   const warehouse = await Warehouse.findOne({
     _id: warehouseId,
     organizationId,
-    status: 'ACTIVE',
+    status: "ACTIVE",
   });
   if (!warehouse) {
-    throw new AppError('Warehouse not found or inactive', 404);
+    throw new AppError("Warehouse not found or inactive", 404);
   }
 
   // 4. একই Work Order-এ আগে থেকে allocated WIP quantity বের করা
   const existingWips = await Wip.find({
     organizationId,
     workOrderId: workOrder._id,
-    status: { $ne: 'CANCELLED' },
-  }).select('quantityIn');
+    status: { $ne: "CANCELLED" },
+  }).select("quantityIn");
 
-  const alreadyAllocated = existingWips.reduce((sum, wip) => sum + wip.quantityIn, 0);
-  const totalAllocated = Number((alreadyAllocated + payload.quantityIn).toFixed(3));
+  const alreadyAllocated = existingWips.reduce(
+    (sum, wip) => sum + wip.quantityIn,
+    0,
+  );
+  const totalAllocated = Number(
+    (alreadyAllocated + payload.quantityIn).toFixed(3),
+  );
 
   if (totalAllocated > workOrder.targetQuantity) {
     throw new AppError(
       `Total WIP quantity (${totalAllocated}) cannot exceed Work Order target quantity (${workOrder.targetQuantity}). Already allocated: ${alreadyAllocated}`,
-      400
+      400,
     );
   }
 
@@ -152,7 +185,7 @@ export const createWip = async (organizationId, userId, payload) => {
     operationName: workOrder.operationName,
     sequence: workOrder.sequence || 1,
     warehouseId,
-    status: 'OPEN',
+    status: "OPEN",
     quantityIn: payload.quantityIn,
     materialCost: payload.materialCost || 0,
     labourCost: payload.labourCost || 0,
@@ -169,14 +202,16 @@ export const getWips = async (organizationId, query = {}) => {
 
   if (query.status) filter.status = query.status;
   if (query.workOrderId) filter.workOrderId = query.workOrderId;
-  if (query.productionOrderId) filter.productionOrderId = query.productionOrderId;
+  if (query.productionOrderId)
+    filter.productionOrderId = query.productionOrderId;
   if (query.warehouseId) filter.warehouseId = query.warehouseId;
   if (query.assignedTo) filter.assignedTo = query.assignedTo;
 
   if (query.search) {
+    const escaped = String(query.search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     filter.$or = [
-      { wipNumber: { $regex: query.search, $options: 'i' } },
-      { operationName: { $regex: query.search, $options: 'i' } },
+      { wipNumber: { $regex: escaped, $options: "i" } },
+      { operationName: { $regex: escaped, $options: "i" } },
     ];
   }
 
@@ -187,53 +222,70 @@ export const getWips = async (organizationId, query = {}) => {
   }
 
   return await Wip.find(filter)
-    .populate('workOrderId', 'workOrderNumber operationName targetQuantity completedQuantity status')
-    .populate('productionOrderId', 'orderNumber targetQuantity status targetItemId')
-    .populate('warehouseId', 'name code')
-    .populate('assignedTo', 'name email')
-    .populate('createdBy', 'name email')
+    .populate(
+      "workOrderId",
+      "workOrderNumber operationName targetQuantity completedQuantity status",
+    )
+    .populate(
+      "productionOrderId",
+      "orderNumber targetQuantity status targetItemId",
+    )
+    .populate("warehouseId", "name code")
+    .populate("assignedTo", "name email")
+    .populate("createdBy", "name email")
     .sort({ createdAt: -1 });
 };
 
 export const getWipById = async (organizationId, id) => {
   const wip = await Wip.findOne({ _id: id, organizationId })
     .populate(
-      'workOrderId',
-      'workOrderNumber operationName sequence targetQuantity completedQuantity status assignedTo startDate endDate'
+      "workOrderId",
+      "workOrderNumber operationName sequence targetQuantity completedQuantity status assignedTo startDate endDate",
     )
-    .populate('productionOrderId', 'orderNumber targetQuantity status targetItemId bomId warehouseId')
-    .populate('warehouseId', 'name code location')
-    .populate('assignedTo', 'name email')
-    .populate('createdBy', 'name email')
-    .populate('progressLogs.loggedBy', 'name email');
+    .populate(
+      "productionOrderId",
+      "orderNumber targetQuantity status targetItemId bomId warehouseId",
+    )
+    .populate("warehouseId", "name code location")
+    .populate("assignedTo", "name email")
+    .populate("createdBy", "name email")
+    .populate("progressLogs.loggedBy", "name email");
 
-  if (!wip) throw new AppError('WIP record not found', 404);
+  if (!wip) throw new AppError("WIP record not found", 404);
   return wip;
 };
 
 export const startWip = async (organizationId, id) => {
   const wip = await getWipOrFail(organizationId, id);
 
-  if (wip.status !== 'OPEN') {
-    throw new AppError(`Cannot start WIP record with status '${wip.status}'`, 400);
+  if (wip.status !== "OPEN") {
+    throw new AppError(
+      `Cannot start WIP record with status '${wip.status}'`,
+      400,
+    );
   }
 
-  wip.status = 'IN_PROGRESS';
+  wip.status = "IN_PROGRESS";
   wip.startedAt = new Date();
   await wip.save();
 
   return wip;
 };
 
-export const updateWipProgress = async (organizationId, userId, id, payload) => {
+export const updateWipProgress = async (
+  organizationId,
+  userId,
+  id,
+  payload,
+) => {
   const wip = await getWipOrFail(organizationId, id);
 
-  if (wip.status !== 'IN_PROGRESS') {
+  if (wip.status !== "IN_PROGRESS") {
     throw new AppError(
-      wip.status === 'OPEN'
-        ? 'Please start the WIP record before updating progress'
+      wip.status === "OPEN"
+        ? "Please start the WIP record before updating progress"
         : `Cannot update progress for a '${wip.status}' WIP record`,
-      400
+      400,
     );
   }
 
@@ -243,21 +295,26 @@ export const updateWipProgress = async (organizationId, userId, id, payload) => 
   const labourDelta = payload.labourCost || 0;
   const overheadDelta = payload.overheadCost || 0;
 
-  const newCompleted = Number((wip.quantityCompleted + completedDelta).toFixed(3));
+  const newCompleted = Number(
+    (wip.quantityCompleted + completedDelta).toFixed(3),
+  );
   const newScrapped = Number((wip.quantityScrapped + scrapDelta).toFixed(3));
 
   if (newCompleted + newScrapped - wip.quantityIn > EPSILON) {
     throw new AppError(
       `Total accounted quantity (${newCompleted + newScrapped}) cannot exceed quantity in process (${wip.quantityIn}). Available balance: ${wip.quantityBalance}`,
-      400
+      400,
     );
   }
 
   const workOrder = await getWorkOrderOrFail(organizationId, wip.workOrderId);
-  if (workOrder.completedQuantity + completedDelta - workOrder.targetQuantity > EPSILON) {
+  if (
+    workOrder.completedQuantity + completedDelta - workOrder.targetQuantity >
+    EPSILON
+  ) {
     throw new AppError(
       `Completed quantity (${workOrder.completedQuantity + completedDelta}) cannot exceed Work Order target quantity (${workOrder.targetQuantity}). Already completed: ${workOrder.completedQuantity}`,
-      400
+      400,
     );
   }
 
@@ -305,7 +362,7 @@ export const updateWipProgress = async (organizationId, userId, id, payload) => 
     } catch (rollbackError) {
       console.error(
         `Failed to rollback WIP ${wip.wipNumber} after Work Order sync failure:`,
-        rollbackError.message
+        rollbackError.message,
       );
     }
 
@@ -319,7 +376,10 @@ export const scrapWip = async (organizationId, userId, id, payload) => {
   const wip = await getWipOrFail(organizationId, id);
 
   if (!EDITABLE_WIP_STATUSES.includes(wip.status)) {
-    throw new AppError(`Cannot record scrap for a '${wip.status}' WIP record`, 400);
+    throw new AppError(
+      `Cannot record scrap for a '${wip.status}' WIP record`,
+      400,
+    );
   }
 
   const scrapQuantity = payload.quantity;
@@ -328,7 +388,7 @@ export const scrapWip = async (organizationId, userId, id, payload) => {
   if (wip.quantityCompleted + newScrapped - wip.quantityIn > EPSILON) {
     throw new AppError(
       `Scrap quantity (${scrapQuantity}) exceeds the available balance (${wip.quantityBalance})`,
-      400
+      400,
     );
   }
 
@@ -343,9 +403,7 @@ export const scrapWip = async (organizationId, userId, id, payload) => {
     materialCost: payload.materialCost || 0,
     labourCost: payload.labourCost || 0,
     overheadCost: payload.overheadCost || 0,
-    remarks: payload.remarks
-      ? `Scrap: ${payload.remarks}`
-      : 'Scrap recorded',
+    remarks: payload.remarks ? `Scrap: ${payload.remarks}` : "Scrap recorded",
     loggedBy: userId,
     loggedAt: new Date(),
   });
@@ -357,11 +415,11 @@ export const scrapWip = async (organizationId, userId, id, payload) => {
 export const holdWip = async (organizationId, id, payload = {}) => {
   const wip = await getWipOrFail(organizationId, id);
 
-  if (wip.status !== 'IN_PROGRESS') {
+  if (wip.status !== "IN_PROGRESS") {
     throw new AppError(`Cannot put a '${wip.status}' WIP record on hold`, 400);
   }
 
-  wip.status = 'ON_HOLD';
+  wip.status = "ON_HOLD";
   wip.remarks = appendRemarks(wip.remarks, payload.remarks);
   await wip.save();
 
@@ -371,11 +429,11 @@ export const holdWip = async (organizationId, id, payload = {}) => {
 export const resumeWip = async (organizationId, id, payload = {}) => {
   const wip = await getWipOrFail(organizationId, id);
 
-  if (wip.status !== 'ON_HOLD') {
+  if (wip.status !== "ON_HOLD") {
     throw new AppError(`Cannot resume a '${wip.status}' WIP record`, 400);
   }
 
-  wip.status = 'IN_PROGRESS';
+  wip.status = "IN_PROGRESS";
   wip.remarks = appendRemarks(wip.remarks, payload.remarks);
   await wip.save();
 
@@ -385,8 +443,8 @@ export const resumeWip = async (organizationId, id, payload = {}) => {
 export const completeWip = async (organizationId, id, payload = {}) => {
   const wip = await getWipOrFail(organizationId, id);
 
-  if (wip.status === 'COMPLETED') {
-    throw new AppError('WIP record is already completed', 400);
+  if (wip.status === "COMPLETED") {
+    throw new AppError("WIP record is already completed", 400);
   }
 
   if (!EDITABLE_WIP_STATUSES.includes(wip.status)) {
@@ -394,17 +452,17 @@ export const completeWip = async (organizationId, id, payload = {}) => {
   }
 
   const balance = Number(
-    (wip.quantityIn - wip.quantityCompleted - wip.quantityScrapped).toFixed(3)
+    (wip.quantityIn - wip.quantityCompleted - wip.quantityScrapped).toFixed(3),
   );
 
   if (balance > EPSILON) {
     throw new AppError(
       `Cannot complete WIP: ${balance} unit(s) are still unaccounted. Record the remaining output or scrap first.`,
-      400
+      400,
     );
   }
 
-  wip.status = 'COMPLETED';
+  wip.status = "COMPLETED";
   wip.completedAt = new Date();
   wip.remarks = appendRemarks(wip.remarks, payload.remarks);
   await wip.save();
@@ -419,7 +477,7 @@ export const cancelWip = async (organizationId, id, payload = {}) => {
     throw new AppError(`Cannot cancel a '${wip.status}' WIP record`, 400);
   }
 
-  wip.status = 'CANCELLED';
+  wip.status = "CANCELLED";
   wip.cancelledAt = new Date();
   wip.remarks = appendRemarks(wip.remarks, payload.remarks);
   await wip.save();
@@ -432,27 +490,30 @@ export const getWipSummary = async (organizationId, query = {}) => {
 
   if (query.status) match.status = query.status;
   if (query.workOrderId) {
-    match.workOrderId = new mongoose.Types.ObjectId(query.workOrderId);
+    match.workOrderId = toObjectIdOrFail(query.workOrderId, "work order ID");
   }
   if (query.productionOrderId) {
-    match.productionOrderId = new mongoose.Types.ObjectId(query.productionOrderId);
+    match.productionOrderId = toObjectIdOrFail(
+      query.productionOrderId,
+      "production order ID",
+    );
   }
   if (query.warehouseId) {
-    match.warehouseId = new mongoose.Types.ObjectId(query.warehouseId);
+    match.warehouseId = toObjectIdOrFail(query.warehouseId, "warehouse ID");
   }
 
   const grouped = await Wip.aggregate([
     { $match: match },
     {
       $group: {
-        _id: '$status',
+        _id: "$status",
         records: { $sum: 1 },
-        quantityIn: { $sum: '$quantityIn' },
-        quantityCompleted: { $sum: '$quantityCompleted' },
-        quantityScrapped: { $sum: '$quantityScrapped' },
-        materialCost: { $sum: '$materialCost' },
-        labourCost: { $sum: '$labourCost' },
-        overheadCost: { $sum: '$overheadCost' },
+        quantityIn: { $sum: "$quantityIn" },
+        quantityCompleted: { $sum: "$quantityCompleted" },
+        quantityScrapped: { $sum: "$quantityScrapped" },
+        materialCost: { $sum: "$materialCost" },
+        labourCost: { $sum: "$labourCost" },
+        overheadCost: { $sum: "$overheadCost" },
       },
     },
     { $sort: { _id: 1 } },
@@ -467,12 +528,14 @@ export const getWipSummary = async (organizationId, query = {}) => {
     quantityCompleted: round(group.quantityCompleted),
     quantityScrapped: round(group.quantityScrapped),
     quantityBalance: round(
-      group.quantityIn - group.quantityCompleted - group.quantityScrapped
+      group.quantityIn - group.quantityCompleted - group.quantityScrapped,
     ),
     materialCost: round(group.materialCost),
     labourCost: round(group.labourCost),
     overheadCost: round(group.overheadCost),
-    totalWipValue: round(group.materialCost + group.labourCost + group.overheadCost),
+    totalWipValue: round(
+      group.materialCost + group.labourCost + group.overheadCost,
+    ),
   }));
 
   const totals = byStatus.reduce(
@@ -498,7 +561,7 @@ export const getWipSummary = async (organizationId, query = {}) => {
       labourCost: 0,
       overheadCost: 0,
       totalWipValue: 0,
-    }
+    },
   );
 
   return { byStatus, totals };
