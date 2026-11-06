@@ -8,8 +8,8 @@ const organizationSchema = new mongoose.Schema(
     plan: { type: String, enum: ['FREE', 'PRO', 'ENTERPRISE'], default: 'FREE' },
     subscriptionStatus: {
       type: String,
-      enum: ['ACTIVE', 'PAST_DUE', 'CANCELLED', 'EXPIRED'],
-      default: 'ACTIVE',
+      enum: ['INACTIVE', 'ACTIVE', 'PAST_DUE', 'CANCELLED', 'EXPIRED'], // Added 'INACTIVE'
+      default: 'INACTIVE', // Default set to 'INACTIVE' for newly created orgs
     },
   },
   { timestamps: true }

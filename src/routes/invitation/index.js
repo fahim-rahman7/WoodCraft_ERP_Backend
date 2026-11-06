@@ -10,7 +10,7 @@ const router = Router();
 
 // Route to send an invitation (Protected: requires auth, org context, active subscription, and authorized role)
 router.post(
-  '/organizations/:orgId/invitations',
+  '/organizations/:orgId',
   protect,
   requireOrgContext,
   requireActiveSubscription,
@@ -21,7 +21,7 @@ router.post(
 
 // Route to accept an invitation (Public endpoint using secure token)
 router.post(
-  '/invitations/:token/accept',
+  '/:token/accept',
   validate(acceptInvitationSchema),
   acceptInvitation
 );
