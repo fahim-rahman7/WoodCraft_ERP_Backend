@@ -1,21 +1,30 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const registerSchema = z.object({
-  name: z.string().min(4, 'Name must be at least 4 characters'),
-  email: z.email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  name: z.string().min(4, "Name must be at least 4 characters"),
+  email: z.email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export const loginSchema = z.object({
-    email: z.email('Invalid email address'),
-    password: z.string().min(1, 'Password is required'),
+  email: z.email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export const verifyOtpSchema = z.object({
-    email: z.email('Invalid email address'),
-    otp: z.string().length(6, 'OTP must be 6 digits'),
-  });
-  
+  email: z.email("Invalid email address"),
+  otp: z.string().length(6, "OTP must be 6 digits"),
+});
+
 export const resendOtpSchema = z.object({
-    email: z.email('Invalid email address'),
-  });
+  email: z.email("Invalid email address"),
+});
+
+export const forgotPassSchema = z.object({
+  email: z.email("Invalid email address"),
+});
+
+export const resetPassSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
