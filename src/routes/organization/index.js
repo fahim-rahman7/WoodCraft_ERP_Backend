@@ -22,6 +22,7 @@ router.get('/', orgController.getMyOrganizations);
 router.get(
   '/members',
   requireOrgContext,
+  checkOrgRole('OWNER', 'HR'),
   orgController.getMembers
 );
 

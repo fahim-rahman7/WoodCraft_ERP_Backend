@@ -8,6 +8,7 @@ import productionRoutes from './production/index.js';
 import invitationRoutes from './invitation/index.js';
 import procurementRoutes from './procurement/index.js';
 import dashboardRoutes from './dashboard/index.js';
+import salesRoutes from './sales/index.js';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use('/invitation', invitationRoutes);
 router.use('/production', productionRoutes);
 router.use('/procurement', procurementRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/sales', salesRoutes);
 
 
 

@@ -13,7 +13,7 @@ import {
 const router = Router();
 
 // Shob route e auth, org context ebong role check kora hobe
-router.use(protect, requireOrgContext, checkOrgRole("OWNER", "MANAGER", "PRODUCTION_MANAGER"));
+router.use(protect, requireOrgContext, checkOrgRole("OWNER", "MANAGER"));
 
 // Create new BOM
 router.post(

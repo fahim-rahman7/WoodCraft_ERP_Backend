@@ -14,7 +14,7 @@ router.post(
   protect,
   requireOrgContext,
   requireActiveSubscription,
-  checkOrgRole('OWNER', 'MANAGER', 'HR'),
+  checkOrgRole('OWNER', 'HR'),
   validate(createInvitationSchema),
   sendInvitation
 );

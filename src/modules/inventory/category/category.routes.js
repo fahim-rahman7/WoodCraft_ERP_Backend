@@ -20,11 +20,12 @@ router
     validate(createCategorySchema),
     categoryController.createCategory
   )
-  .get(categoryController.getAllCategories);
+  .get(checkOrgRole("OWNER", "MANAGER"), categoryController.getAllCategories);
 
 router
   .route("/:id")
   .get(
+    checkOrgRole("OWNER", "MANAGER"),
     validate(categoryIdParamSchema, "params"),
     categoryController.getCategoryById
   )

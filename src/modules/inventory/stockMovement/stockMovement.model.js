@@ -26,7 +26,7 @@ const stockMovementSchema = new mongoose.Schema(
     },
     movementType: {
       type: String,
-      enum: ['IN', 'OUT', 'RESERVE', 'RELEASE', 'TRANSFER_IN', 'TRANSFER_OUT', 'ADJUSTMENT'],
+      enum: ['IN', 'OUT', 'RESERVE', 'RELEASE', 'TRANSFER_IN', 'TRANSFER_OUT', 'ADJUSTMENT', 'SALES_DELIVERY'],
       required: true,
     },
     referenceType: {
@@ -40,6 +40,7 @@ const stockMovementSchema = new mongoose.Schema(
         'INITIAL_STOCK',
         'PRODUCTION_RECEIPT',
         'SCRAP',
+        'DELIVERY_Note'
       ],
       required: true,
     },

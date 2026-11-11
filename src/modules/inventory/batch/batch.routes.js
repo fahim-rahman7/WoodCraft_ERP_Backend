@@ -20,11 +20,15 @@ router
     validate(createBatchSchema),
     batchController.createBatch
   )
-  .get(batchController.getAllBatches);
+  .get(
+    checkOrgRole("OWNER", "MANAGER"),
+    batchController.getAllBatches
+  );
 
 router
   .route("/:id")
   .get(
+    checkOrgRole("OWNER", "MANAGER"),
     validate(batchIdParamSchema, "params"),
     batchController.getBatchById
   )
