@@ -1,6 +1,3 @@
-console.log("brevo api key :", process.env.EMAIL_USER);
-console.log("EMAIL_FROM_ADDRESS :", process.env.EMAIL_FROM_ADDRESS);
-
 export const sendOTP = async (to, otp) => {
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",

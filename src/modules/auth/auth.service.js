@@ -179,7 +179,7 @@ export const forgetPassword = async ({ email }) => {
   };
 };
 
-export const resetPassword = async ({ token, newPassword }) => {
+export const resetPassword = async ( token, newPassword ) => {
   const user = await User.findOne({
     resetPassToken: token,
     resetPassTokenExpires: { $gt: new Date() },
