@@ -9,6 +9,7 @@ import categoryRoutes from "../../modules/inventory/category/category.routes.js"
 import adjustmentRoutes from '../../modules/inventory/adjustment/adjustment.routes.js';
 import qualityInspectionRoutes from '../../modules/inventory/qualityInspection/qualityInspection.router.js';
 import batchRoutes from '../../modules/inventory/batch/batch.routes.js';
+import scrapsRoutes from '../../modules/inventory/scrap/scrap.routes.js';
 
 
 
@@ -26,6 +27,7 @@ router.use('/category', categoryRoutes);
 router.use('/adjustments', adjustmentRoutes);
 router.use('/quality-inspections', qualityInspectionRoutes);
 router.use('/batch', batchRoutes);
+router.use('/scraps', scrapsRoutes);
 
 
 

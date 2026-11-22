@@ -1,0 +1,307 @@
+import mongoose from "mongoose";
+import { AppError } from "../../../utils/appError.js";
+import { Item } from "../item/item.model.js";
+import { Batch } from "../batch/batch.model.js";
+import { Stock } from "../stock/stock.model.js";
+import { Warehouse } from "../warehouse/warehouse.model.js";
+import { Scrap } from "./scrap.model.js";
+import {
+  decreaseStock,
+  releaseReservedStock,
+  reserveStock,
+} from "../stock/stock.service.js";
+
+// -----create new scraps
+export const createScrapsServices = async (organizationId, userId, payload) => {
+  const { warehouseId, items, remarks } = payload;
+
+  // ----checking warehouse exist or not
+  const warehouseExist = await Warehouse.findOne({
+    _id: warehouseId,
+    organizationId,
+    status: "ACTIVE",
+  });
+  if (!warehouseExist) {
+    throw new AppError("Warehouse not found", 404);
+  }
+
+  for (const item of items) {
+    // -----checking item exist or not
+    const itemExist = await Item.findOne({
+      _id: item.itemId,
+      organizationId,
+      status: "ACTIVE",
+    });
+    if (!itemExist) {
+      throw new AppError(`Item not found: ${item.itemId}`, 404);
+    }
+
+    // ----checking batch exist and active
+    const batchExist = await Batch.findOne({
+      _id: item.batchId,
+      organizationId,
+      itemId: item.itemId,
+      status: "ACTIVE",
+    });
+    if (!batchExist) {
+      throw new AppError(`Active batch not found for item: ${item.itemId}`, 404);
+    }
+
+    // ----checking item stock exist on this warehouse & batch
+    const stockExist = await Stock.findOne({
+      organizationId,
+      warehouseId,
+      itemId: item.itemId,
+      batchId: item.batchId,
+    });
+    if (!stockExist) {
+      throw new AppError(`Stock not available for item: ${item.itemId}`, 400);
+    }
+
+    // -----checking item quantity
+    if (stockExist.availableQuantity < item.quantity) {
+      throw new AppError(`Not enough stock available for item: ${item.itemId}`, 400);
+    }
+  }
+
+  // ----scrap number generate
+  const lastScrap = await Scrap.findOne({ organizationId })
+    .sort({ createdAt: -1 })
+    .select("scrapNumber");
+
+  const lastNumber = lastScrap ? parseInt(lastScrap.scrapNumber.split("-")[1]) : 0;
+  const scrapNumber = `SCR-${String(lastNumber + 1).padStart(4, "0")}`;
+
+  // -----create scraps
+  const scrap = await Scrap.create({
+    organizationId,
+    scrapNumber,
+    warehouseId,
+    items,
+    remarks,
+    requestedBy: userId,
+  });
+
+  return scrap;
+};
+
+// --------get scraps list
+export const scrapsListServices = async (organizationId, query) => {
+  const limit = query.limit ? Number(query.limit) : 10;
+  const page = query.page ? Number(query.page) : 1;
+  const skip = (page - 1) * limit;
+  const sortBy = query.sortBy || "createdAt";
+  const sortOrder = query.sortOrder === "asc" ? 1 : -1;
+
+  const filter = { organizationId };
+
+  if (query.status) filter.status = query.status;
+  if (query.warehouseId) filter.warehouseId = query.warehouseId;
+  if (query.itemId) filter["items.itemId"] = query.itemId;
+  if (query.batchId) filter["items.batchId"] = query.batchId;
+  if (query.reason) filter["items.reason"] = query.reason;
+
+  const scraps = await Scrap.find(filter)
+    .populate("warehouseId", "name code")
+    .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status")
+    .populate("requestedBy", "name email")
+    .populate("approvedBy", "name email")
+    .sort({ [sortBy]: sortOrder })
+    .skip(skip)
+    .limit(limit);
+
+  const totalScrapsCount = await Scrap.countDocuments(filter);
+  const totalPage = Math.ceil(totalScrapsCount / limit);
+
+  return {
+    data: scraps,
+    meta: {
+      page,
+      limit,
+      totalPage,
+      totalScrapsCount,
+    },
+  };
+};
+
+// --------get single scraps
+export const getSingleScrapsServices = async (scrapId, organizationId) => {
+  const scrapData = await Scrap.findOne({
+    _id: scrapId,
+    organizationId,
+  })
+    .populate("warehouseId", "name code location")
+    .populate("items.itemId", "name sku unit")
+    .populate("items.batchId", "batchNumber status")
+    .populate("requestedBy", "name email")
+    .populate("approvedBy", "name email");
+
+  if (!scrapData) {
+    throw new AppError("Scrap not found", 404);
+  }
+
+  return scrapData;
+};
+
+// --------approve scraps
+export const approveScrapsServices = async (scrapId, organizationId, userId) => {
+  const approveScrap = await mongoose.connection.transaction(
+    async (session) => {
+      const scrapData = await Scrap.findOne({
+        _id: scrapId,
+        organizationId,
+      }).session(session);
+
+      if (!scrapData) {
+        throw new AppError("Scrap not found", 404);
+      }
+
+      // ----checking scrap status pending or not
+      if (scrapData.status !== "PENDING") {
+        throw new AppError(
+          `Only pending scrap can be approved. Current status: ${scrapData.status}`,
+          400,
+        );
+      }
+
+      // ------reserving scrap stock with batchId
+      for (const item of scrapData.items) {
+        await reserveStock(
+          {
+            organizationId,
+            warehouseId: scrapData.warehouseId,
+            itemId: item.itemId,
+            batchId: item.batchId,
+            quantity: item.quantity,
+            referenceType: "SCRAP",
+            referenceId: scrapData._id,
+            performedBy: userId,
+            remarks: `Stock reserved for scrap ${scrapData.scrapNumber}`,
+          },
+          session,
+        );
+      }
+
+      scrapData.status = "APPROVED";
+      scrapData.approvedBy = userId;
+      await scrapData.save({ session });
+
+      return scrapData;
+    },
+  );
+
+  return approveScrap;
+};
+
+// --------apply scraps
+export const applyScrapsServices = async (scrapId, organizationId, userId) => {
+  const applyScrap = await mongoose.connection.transaction(async (session) => {
+    const scrapData = await Scrap.findOne({
+      _id: scrapId,
+      organizationId,
+    }).session(session);
+
+    if (!scrapData) {
+      throw new AppError("Scrap not found", 404);
+    }
+
+    // ----checking scrap status approved or not
+    if (scrapData.status !== "APPROVED") {
+      throw new AppError(
+        `Only approved scrap can be applied. Current status: ${scrapData.status}`,
+        400,
+      );
+    }
+
+    for (const item of scrapData.items) {
+      // ------releasing reserved stock with batchId
+      await releaseReservedStock(
+        {
+          organizationId,
+          warehouseId: scrapData.warehouseId,
+          itemId: item.itemId,
+          batchId: item.batchId,
+          quantity: item.quantity,
+          referenceType: "SCRAP",
+          referenceId: scrapData._id,
+          performedBy: userId,
+          remarks: `Reserved stock released for scrap ${scrapData.scrapNumber}`,
+        },
+        session,
+      );
+
+      // ------decreasing scrap stock from batch
+      await decreaseStock(
+        {
+          organizationId,
+          warehouseId: scrapData.warehouseId,
+          itemId: item.itemId,
+          batchId: item.batchId,
+          quantity: item.quantity,
+          referenceType: "SCRAP",
+          referenceId: scrapData._id,
+          performedBy: userId,
+          remarks: `Stock scrapped for ${scrapData.scrapNumber} (${item.reason})`,
+        },
+        session,
+      );
+    }
+
+    scrapData.status = "APPLIED";
+    await scrapData.save({ session });
+
+    return scrapData;
+  });
+
+  return applyScrap;
+};
+
+// --------cancel scraps
+export const cancelScrapsServices = async (scrapId, organizationId, userId) => {
+  const cancelScrap = await mongoose.connection.transaction(async (session) => {
+    const scrapData = await Scrap.findOne({
+      _id: scrapId,
+      organizationId,
+    }).session(session);
+
+    if (!scrapData) {
+      throw new AppError("Scrap not found", 404);
+    }
+
+    // ----checking scrap status pending or approved
+    if (scrapData.status !== "PENDING" && scrapData.status !== "APPROVED") {
+      throw new AppError(
+        `Only pending or approved scrap can be cancelled. Current status: ${scrapData.status}`,
+        400,
+      );
+    }
+
+    // ------releasing reserved stock if approved
+    if (scrapData.status === "APPROVED") {
+      for (const item of scrapData.items) {
+        await releaseReservedStock(
+          {
+            organizationId,
+            warehouseId: scrapData.warehouseId,
+            itemId: item.itemId,
+            batchId: item.batchId,
+            quantity: item.quantity,
+            referenceType: "SCRAP",
+            referenceId: scrapData._id,
+            performedBy: userId,
+            remarks: `Reserved stock released for cancelled scrap ${scrapData.scrapNumber}`,
+          },
+          session,
+        );
+      }
+    }
+
+    scrapData.status = "CANCELLED";
+    await scrapData.save({ session });
+
+    return scrapData;
+  });
+
+  return cancelScrap;
+};

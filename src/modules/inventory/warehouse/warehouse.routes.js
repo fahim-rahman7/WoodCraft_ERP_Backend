@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { protect } from '../../../middlewares/auth.middleware.js';
-import { requireOrgContext } from '../../../middlewares/org.middleware.js';
+import { checkOrgRole, requireOrgContext } from '../../../middlewares/org.middleware.js';
 import { validate } from '../../../middlewares/validate.middleware.js';
 import * as warehouseController from './warehouse.controller.js';
 import { createWarehouseSchema, updateWarehouseSchema } from './warehouse.validation.js';
 
 const router = Router();
 
-router.use(protect, requireOrgContext);
+router.use(protect, requireOrgContext,checkOrgRole("OWNER", "MANAGER"),);
 
 router
   .route('/')

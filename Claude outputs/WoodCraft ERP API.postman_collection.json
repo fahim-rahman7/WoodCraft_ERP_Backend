@@ -1,0 +1,3295 @@
+{
+  "info": {
+    "_postman_id": "c9354042-98d8-4536-93cb-3f313a2d587c",
+    "name": "WoodCraft ERP API",
+    "description": "WoodCraft ERP backend API.\n\nHow to use:\n1. Collection Variables: set email and password (and baseUrl if your port is not 5000).\n2. Auth > Login (saves accessToken).\n3. Organization > My Organizations or Create Organization (saves organizationId).\n4. Use any other request. Bearer token and x-organization-id header are added automatically.\n\nModules: Auth, Organization, Membership, Billing, Warehouse, Category, Supplier, Item, Stock, Stock Movement, Purchase Order, Goods Receipt, Batch, Quality Inspection, Transfer, Production (BOM, Production Order, Material Issue, Work Order), Adjustment, Scraps.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "51431062",
+    "_collection_link": "https://go.postman.co/collection/51431062-c9354042-98d8-4536-93cb-3f313a2d587c?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth (User)",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"shanto\",\n  \"email\": \"shantotest@gmail.com\",\n  \"password\": \"1234566752\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a user and sends a 6 digit OTP to the email."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Put the OTP from your email here."
+          },
+          "response": []
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/resend-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "resend-otp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save access token after login\nconst res = pm.response.json();\nif (res.data && res.data.accessToken) {\n    pm.collectionVariables.set(\"accessToken\", res.data.accessToken);\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"shantotest@gmail.com\",\n  \"password\": \"12345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Saves accessToken to collection variables automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new access token",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.accessToken) {",
+                  "    pm.collectionVariables.set(\"accessToken\", res.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Uses the refreshToken cookie set by Login. Saves the new accessToken."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Clears the refresh token."
+          },
+          "response": []
+        }
+      ],
+      "description": "User account: register, verify OTP, login, refresh, logout.\nLogin saves the access token automatically."
+    },
+    {
+      "name": "Organization",
+      "item": [
+        {
+          "name": "Create Organization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new organization id",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"organizationId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"WoodCraft Ltd\",\n  \"plan\": \"FREE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/organizations/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "organizations",
+                "create"
+              ]
+            },
+            "description": "You become OWNER of the new organization. Saves organizationId."
+          },
+          "response": []
+        },
+        {
+          "name": "My Organizations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save first organization id",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.length > 0) {",
+                  "    pm.collectionVariables.set(\"organizationId\", res.data[0]._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/organizations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "organizations"
+              ]
+            },
+            "description": "Lists organizations you are an active member of. Saves the first one as organizationId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/organizations/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "organizations",
+                "members"
+              ]
+            },
+            "description": "Members of the current organization. Copy a membership _id into the memberId variable to use the requests below."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Member Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"MANAGER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/organizations/members/{{memberId}}/role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "organizations",
+                "members",
+                "{{memberId}}",
+                "role"
+              ]
+            },
+            "description": "OWNER / MANAGER only. role: OWNER | MANAGER | HR | STAFF"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Member Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/organizations/members/{{memberId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "organizations",
+                "members",
+                "{{memberId}}",
+                "status"
+              ]
+            },
+            "description": "OWNER / MANAGER only. status: ACTIVE | SUSPENDED | REMOVED"
+          },
+          "response": []
+        }
+      ],
+      "description": "Create and list organizations, manage members.\nCreate / My Organizations save organizationId automatically. Every request then sends it as the x-organization-id header."
+    },
+    {
+      "name": "Membership",
+      "item": [
+        {
+          "name": "My Memberships",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Active Context",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/context",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "context"
+              ]
+            },
+            "description": "Your membership in the current organization (x-organization-id)."
+          },
+          "response": []
+        },
+        {
+          "name": "Leave Organization",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/leave",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "leave"
+              ]
+            },
+            "description": "Leave the current organization."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "{{memberId}}"
+              ]
+            },
+            "description": "OWNER / MANAGER only. memberId (membership _id) goes in the URL."
+          },
+          "response": []
+        }
+      ],
+      "description": "Your memberships and leaving / removing members."
+    },
+    {
+      "name": "Subscription (Billing)",
+      "item": [
+        {
+          "name": "SSLCommerz Callbacks",
+          "item": [
+            {
+              "name": "Payment Success",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "val_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/billing/success?tranId=&orgId={{organizationId}}&plan=PRO",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "success"
+                  ],
+                  "query": [
+                    {
+                      "key": "tranId",
+                      "value": ""
+                    },
+                    {
+                      "key": "orgId",
+                      "value": "{{organizationId}}"
+                    },
+                    {
+                      "key": "plan",
+                      "value": "PRO"
+                    }
+                  ]
+                },
+                "description": "Redirects to the frontend."
+              },
+              "response": []
+            },
+            {
+              "name": "Payment Fail",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/billing/fail?tranId=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "fail"
+                  ],
+                  "query": [
+                    {
+                      "key": "tranId",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Payment Cancel",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/billing/cancel?tranId=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "cancel"
+                  ],
+                  "query": [
+                    {
+                      "key": "tranId",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Payment IPN",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "tran_id",
+                      "value": ""
+                    },
+                    {
+                      "key": "val_id",
+                      "value": ""
+                    },
+                    {
+                      "key": "status",
+                      "value": "VALID"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/billing/ipn",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "ipn"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Called by SSLCommerz servers, not for normal use. Kept here for reference / debugging."
+        },
+        {
+          "name": "Create Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan\": \"PRO\",\n  \"cusPhone\": \"01700000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "checkout"
+              ]
+            },
+            "description": "OWNER only. Returns gatewayUrl; open it in a browser to pay. plan: PRO | ENTERPRISE"
+          },
+          "response": []
+        }
+      ],
+      "description": "Plan checkout with SSLCommerz."
+    },
+    {
+      "name": "Warehouse",
+      "item": [
+        {
+          "name": "Create Warehouse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new warehouse id",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"warehouseId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dhaka Warehouse\",\n  \"code\": \"DHK-01\",\n  \"location\": \"Dhaka\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/warehouses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "warehouses"
+              ]
+            },
+            "description": "code must be unique inside the organization."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/warehouses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "warehouses"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "ACTIVE | INACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "name or code",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: status, search (name or code)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Warehouse By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/warehouses/{{warehouseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "warehouses",
+                "{{warehouseId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Warehouse",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dhaka Main Warehouse\",\n  \"location\": \"Tejgaon, Dhaka\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/warehouses/{{warehouseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "warehouses",
+                "{{warehouseId}}"
+              ]
+            },
+            "description": "Send only the fields you want to change."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Warehouse",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/warehouses/{{warehouseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "warehouses",
+                "{{warehouseId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Warehouse CRUD. Create saves warehouseId."
+    },
+    {
+      "name": "Category",
+      "item": [
+        {
+          "name": "Create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new categoryId",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"categoryId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "category"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hardwood\",\n  \"description\": \"Solid hardwood timber\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "OWNER / MANAGER only. Saves categoryId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "category"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "ACTIVE | INACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "name",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: status, search (name)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/category/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "category",
+                "{{categoryId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/category/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "category",
+                "{{categoryId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Teak, Mahogany, Oak\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Send only the fields you want to change."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/category/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "category",
+                "{{categoryId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Item category CRUD. Create saves categoryId (used by Create Item)."
+    },
+    {
+      "name": "Supplier",
+      "item": [
+        {
+          "name": "Create Supplier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new supplierId",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"supplierId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/suppliers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "suppliers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rahim Timber Traders\",\n  \"email\": \"rahim@timber.com\",\n  \"phone\": \"01711000000\",\n  \"address\": \"Kawran Bazar, Dhaka\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "OWNER / MANAGER only. name and phone required. Saves supplierId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Suppliers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/suppliers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "ACTIVE | INACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "name, phone or email",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: status, search (name, phone, email)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Supplier By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/suppliers/{{supplierId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "suppliers",
+                "{{supplierId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Supplier",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/suppliers/{{supplierId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "suppliers",
+                "{{supplierId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01722000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Send only the fields you want to change."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Supplier",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/suppliers/{{supplierId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "suppliers",
+                "{{supplierId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Supplier CRUD. Create saves supplierId."
+    },
+    {
+      "name": "Item",
+      "item": [
+        {
+          "name": "Create Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new item id",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"itemId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"name\": \"Teak Wood\",\n  \"sku\": \"TW-001\",\n  \"unit\": \"CFT\",\n  \"itemType\": \"RAW_MATERIAL\",\n  \"woodAttributes\": {\n    \"species\": \"Teak\",\n    \"grade\": \"A\",\n    \"thickness\": 2,\n    \"width\": 6,\n    \"length\": 8,\n    \"moistureContent\": 12\n  },\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "items"
+              ]
+            },
+            "description": "unit: CFT | SFT | PCS | KG | LITER | BOX | PACKET\nitemType: RAW_MATERIAL | CONSUMABLE | FINISHED_GOODS | HARDWARE\nsku must be unique inside the organization."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "itemType",
+                  "value": "RAW_MATERIAL",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "categoryId",
+                  "value": "{{categoryId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "name or sku",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: categoryId, itemType, status, search."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Item By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "items",
+                "{{itemId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Teak Wood Grade A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "description": "Send only the fields you want to change."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "items",
+                "{{itemId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Item CRUD. Create saves itemId.\nNote: there is no Category API yet, so put an existing category _id in the categoryId variable."
+    },
+    {
+      "name": "Stock",
+      "item": [
+        {
+          "name": "Stock Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save first stock (warehouse + item) that has available quantity\nconst res = pm.response.json();\nconst stock = (res.data || []).find(s => s.availableQuantity > 0);\nif (stock) {\n    pm.collectionVariables.set(\"fromWarehouseId\", stock.warehouseId._id);\n    pm.collectionVariables.set(\"itemId\", stock.itemId._id);\n}"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/stocks/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "stocks",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "batchId",
+                  "value": "{{batchId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: warehouseId, itemId.\nSaves the first stock that has available quantity as fromWarehouseId + itemId (for Transfer)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Current stock per item per warehouse (read only)."
+    },
+    {
+      "name": "Stock Movement",
+      "item": [
+        {
+          "name": "Get Stock Movements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/stock-movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "stock-movements"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "movementType",
+                  "value": "IN",
+                  "description": "IN | OUT | RESERVE | RELEASE | TRANSFER_IN | TRANSFER_OUT | ADJUSTMENT",
+                  "disabled": true
+                },
+                {
+                  "key": "referenceType",
+                  "value": "GOODS_RECEIPT",
+                  "description": "GOODS_RECEIPT | MATERIAL_ISSUE | PRODUCTION_ORDER | STOCK_TRANSFER | STOCK_ADJUSTMENT | INITIAL_STOCK",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: warehouseId, itemId, movementType, referenceType."
+          },
+          "response": []
+        }
+      ],
+      "description": "Stock change history / ledger (read only)."
+    },
+    {
+      "name": "Purchase Order",
+      "item": [
+        {
+          "name": "Create Purchase Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new purchaseOrderId",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"purchaseOrderId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/purchase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "purchase"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"{{supplierId}}\",\n  \"expectedDate\": \"2026-11-15\",\n  \"items\": [\n    {\n      \"itemId\": \"{{itemId}}\",\n      \"orderedQuantity\": 100,\n      \"unitPrice\": 1200\n    }\n  ],\n  \"remarks\": \"Teak wood order\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "OWNER / MANAGER only. Saves purchaseOrderId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Purchase Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/purchase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "purchase"
+              ],
+              "query": [
+                {
+                  "key": "supplierId",
+                  "value": "{{supplierId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "DRAFT | PENDING | APPROVED | PARTIALLY_RECEIVED | RECEIVED | CANCELLED",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "purchaseOrderNumber",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: supplierId, status, search (purchaseOrderNumber)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Purchase Order By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/purchase/{{purchaseOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "purchase",
+                "{{purchaseOrderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Purchase Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/purchase/{{purchaseOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "purchase",
+                "{{purchaseOrderId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": \"Updated remarks\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Send only the fields you want to change."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Purchase Order",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/purchase/{{purchaseOrderId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "purchase",
+                "{{purchaseOrderId}}",
+                "approve"
+              ]
+            },
+            "description": "No body."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Purchase Order",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/purchase/{{purchaseOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "purchase",
+                "{{purchaseOrderId}}",
+                "cancel"
+              ]
+            },
+            "description": "No body."
+          },
+          "response": []
+        }
+      ],
+      "description": "Purchase orders to suppliers. Flow: Create > Approve > receive with Goods Receipt (purchaseOrderId)."
+    },
+    {
+      "name": "Goods Receipt",
+      "item": [
+        {
+          "name": "Create Goods Receipt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new goods receipt id",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"goodsReceiptId\", res.data._id);",
+                  "}",
+                  "// save batch id of first item",
+                  "if (res.data && res.data.items && res.data.items.length > 0) {",
+                  "    pm.collectionVariables.set(\"batchId\", res.data.items[0].batchId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"supplierName\": \"Rahim Timber Traders\",\n  \"supplierInvoiceNo\": \"INV-1001\",\n  \"items\": [\n    {\n      \"itemId\": \"{{itemId}}\",\n      \"batchNumber\": \"BATCH-001\",\n      \"quantity\": 50,\n      \"unitPrice\": 1200\n    }\n  ],\n  \"remarks\": \"First teak wood purchase\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/goods-receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "goods-receipts"
+              ]
+            },
+            "description": "items: at least one. quantity > 0, unitPrice >= 0 (optional, default 0).\nsupplierName, supplierInvoiceNo, remarks are optional.\nsupplierId and batchNumber (every item) are required now. batchNumber must be unique. Saves batchId of the first item."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Goods Receipts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/goods-receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "goods-receipts"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "DRAFT",
+                  "description": "DRAFT | RECEIVED | CANCELLED",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "grnNumber or supplierName",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: warehouseId, status, search."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Goods Receipt By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/goods-receipts/{{goodsReceiptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "goods-receipts",
+                "{{goodsReceiptId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Receive Goods Receipt",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/goods-receipts/{{goodsReceiptId}}/receive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "goods-receipts",
+                "{{goodsReceiptId}}",
+                "receive"
+              ]
+            },
+            "description": "Marks the DRAFT GRN as RECEIVED and adds the quantities to stock. No body."
+          },
+          "response": []
+        }
+      ],
+      "description": "GRN: receive purchased stock into a warehouse.\nFlow: Create (DRAFT) > Receive (RECEIVED, stock added). Create saves goodsReceiptId."
+    },
+    {
+      "name": "Batch",
+      "item": [
+        {
+          "name": "Create Batch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new batchId",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"batchId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "batch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchNumber\": \"BATCH-002\",\n  \"itemId\": \"{{itemId}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"initialQuantity\": 80,\n  \"manufactureDate\": \"2026-09-01\",\n  \"receivedDate\": \"2026-10-01\",\n  \"remarks\": \"Manual batch\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "OWNER / MANAGER only. Normally batch is created by Create Goods Receipt. This does not add stock. Saves batchId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Batches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "batch"
+              ],
+              "query": [
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "ACTIVE | EXHAUSTED | EXPIRED | CANCELLED",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Query values are used directly as filter (itemId, warehouseId, status ...)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Batch By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/batch/{{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "batch",
+                "{{batchId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Batch",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/batch/{{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "batch",
+                "{{batchId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": \"Checked\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "OWNER / MANAGER only. batchNumber, remarks, status."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Batch",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/batch/{{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "batch",
+                "{{batchId}}"
+              ]
+            },
+            "description": "OWNER / MANAGER only."
+          },
+          "response": []
+        }
+      ],
+      "description": "Batch = one lot of an item. Stock is kept per batch (warehouse + item + batch)."
+    },
+    {
+      "name": "Quality Inspection",
+      "item": [
+        {
+          "name": "Create Quality Inspection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new qualityInspectionId",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"qualityInspectionId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/quality-inspections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "quality-inspections"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goodsReceiptId\": \"{{goodsReceiptId}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"inspectionDate\": \"2026-10-23\",\n  \"remarks\": \"Teak wood check\",\n  \"items\": [\n    {\n      \"itemId\": \"{{itemId}}\",\n      \"receivedQuantity\": 50,\n      \"acceptedQuantity\": 48,\n      \"rejectedQuantity\": 2,\n      \"inspectionResult\": \"PARTIAL\",\n      \"remarks\": \"2 pcs cracked\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "OWNER / MANAGER only. acceptedQuantity + rejectedQuantity must equal receivedQuantity.\ninspectionResult: PASS | FAIL | PARTIAL. Saves qualityInspectionId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Quality Inspections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/quality-inspections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "quality-inspections"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "PENDING | INSPECTED | CANCELLED",
+                  "disabled": true
+                },
+                {
+                  "key": "supplierId",
+                  "value": "{{supplierId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional filters: status, supplierId, warehouseId, search."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Quality Inspection By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/quality-inspections/{{qualityInspectionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "quality-inspections",
+                "{{qualityInspectionId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Inspect Quality Inspection",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/quality-inspections/{{qualityInspectionId}}/inspect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "quality-inspections",
+                "{{qualityInspectionId}}",
+                "inspect"
+              ]
+            },
+            "description": "OWNER / MANAGER only. No body. Accepted quantity is added to stock (with batch)."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Quality Inspection",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/quality-inspections/{{qualityInspectionId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "quality-inspections",
+                "{{qualityInspectionId}}",
+                "cancel"
+              ]
+            },
+            "description": "OWNER / MANAGER only. No body."
+          },
+          "response": []
+        }
+      ],
+      "description": "Check received goods. Flow: Goods Receipt (Create > Receive) > QI Create > Inspect (stock added)."
+    },
+    {
+      "name": "Transfer",
+      "item": [
+        {
+          "name": "Create Transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));\nconst d = pm.response.json().data;\nif (d && d._id) { pm.collectionVariables.set('transferId', d._id); console.log('transferId saved:', d._id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-organization-id",
+                "value": "{{organizationId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWarehouseId\": \"6acb30b39f2403aa82363d58\",\n  \"toWarehouseId\": \"6acb30b39f2403aa82363d59\",\n  \"items\": [\n    {\n      \"itemId\": \"6acb30b39f2403aa82363d5a\",\n      \"batchId\": \"{{batchId}}\",\n      \"quantity\": 50\n    },\n    {\n      \"itemId\": \"6acb30b39f2403aa82363d5b\",\n      \"batchId\": \"{{batchId2}}\",\n      \"quantity\": 50\n    }\n  ],\n  \"remarks\": \"Shift stock to branch warehouse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transfer"
+              ]
+            },
+            "description": "items: same itemId can not be added twice. quantity must be > 0.\nbatchId is required for every item."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Transfers (filter)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-organization-id",
+                "value": "{{organizationId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transfer?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transfer"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                },
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "PENDING | APPROVED | COMPLETED | CANCELLED",
+                  "disabled": true
+                },
+                {
+                  "key": "fromWarehouseId",
+                  "value": "{{fromWarehouseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "toWarehouseId",
+                  "value": "{{toWarehouseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single Transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));\npm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-organization-id",
+                "value": "{{organizationId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transfer/6acb356a64ddf92d91fbca70",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transfer",
+                "6acb356a64ddf92d91fbca70"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));\npm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-organization-id",
+                "value": "{{organizationId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transfer/6acb356a64ddf92d91fbca70/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transfer",
+                "6acb356a64ddf92d91fbca70",
+                "approve"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));\npm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-organization-id",
+                "value": "{{organizationId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transfer/6acb356a64ddf92d91fbca70/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transfer",
+                "6acb356a64ddf92d91fbca70",
+                "complete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-organization-id",
+                "value": "{{organizationId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transfer/{{transferId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transfer",
+                "{{transferId}}",
+                "cancel"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Move stock between warehouses. OWNER / MANAGER only.\nFlow: Create (PENDING) > Approve > Complete. Cancel works before Complete.\nCreate saves transferId. Set toWarehouseId (and itemId2 for the 2nd item) before Create."
+    },
+    {
+      "name": "Production",
+      "item": [
+        {
+          "name": "BOM",
+          "item": [
+            {
+              "name": "Create BOM",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// save new bomId",
+                      "const res = pm.response.json();",
+                      "if (res.data && res.data._id) {",
+                      "    pm.collectionVariables.set(\"bomId\", res.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/production/bom",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "bom"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"finishedItemId\": \"{{finishedItemId}}\",\n  \"quantity\": 1,\n  \"components\": [\n    {\n      \"itemId\": \"{{itemId}}\",\n      \"quantity\": 5\n    }\n  ],\n  \"remarks\": \"Dining table BOM\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "OWNER / MANAGER / PRODUCTION_MANAGER. Saves bomId."
+              },
+              "response": []
+            },
+            {
+              "name": "Get BOMs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/bom",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "bom"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "ACTIVE",
+                      "description": "ACTIVE | INACTIVE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "finishedItemId",
+                      "value": "{{finishedItemId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Optional filters: status, finishedItemId, page, limit."
+              },
+              "response": []
+            },
+            {
+              "name": "Get BOM By Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/bom/{{bomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "bom",
+                    "{{bomId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update BOM",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/production/bom/{{bomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "bom",
+                    "{{bomId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"remarks\": \"Updated BOM\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "At least one field: quantity, components, status, remarks."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete BOM",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/bom/{{bomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "bom",
+                    "{{bomId}}"
+                  ]
+                },
+                "description": "Soft delete."
+              },
+              "response": []
+            }
+          ],
+          "description": "Bill of Materials: which raw items make one finished item."
+        },
+        {
+          "name": "Production Order",
+          "item": [
+            {
+              "name": "Create Production Order",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// save new productionOrderId",
+                      "const res = pm.response.json();",
+                      "if (res.data && res.data._id) {",
+                      "    pm.collectionVariables.set(\"productionOrderId\", res.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/production/production-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "production-orders"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"targetItemId\": \"{{finishedItemId}}\",\n  \"targetQuantity\": 10,\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"bomId\": \"{{bomId}}\",\n  \"startDate\": \"2026-10-25\",\n  \"dueDate\": \"2026-11-10\",\n  \"remarks\": \"Dining table order\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "bomId optional (active BOM is used if not given). Saves productionOrderId."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Production Orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/production-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "production-orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "warehouseId",
+                      "value": "{{warehouseId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "PLANNED",
+                      "description": "DRAFT | PLANNED | IN_PRODUCTION | COMPLETED | CANCELLED",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Optional filters: warehouseId, status."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Production Order By Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/production-orders/{{productionOrderId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "production-orders",
+                    "{{productionOrderId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Start Production",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/production-orders/{{productionOrderId}}/start",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "production-orders",
+                    "{{productionOrderId}}",
+                    "start"
+                  ]
+                },
+                "description": "No body."
+              },
+              "response": []
+            },
+            {
+              "name": "Complete Production",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/production-orders/{{productionOrderId}}/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "production-orders",
+                    "{{productionOrderId}}",
+                    "complete"
+                  ]
+                },
+                "description": "No body."
+              },
+              "response": []
+            }
+          ],
+          "description": "Production orders. Flow: Create > Start > Complete."
+        },
+        {
+          "name": "Material Issue",
+          "item": [
+            {
+              "name": "Create Material Issue",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// save new material issue id",
+                      "const res = pm.response.json();",
+                      "if (res.data && res.data._id) {",
+                      "    pm.collectionVariables.set(\"materialIssueId\", res.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"items\": [\n    {\n      \"itemId\": \"{{itemId}}\",\n      \"batchId\": \"{{batchId}}\",\n      \"quantity\": 10\n    }\n  ],\n  \"remarks\": \"Issue for dining table batch\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/production/material-issues",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "material-issues"
+                  ]
+                },
+                "description": "items: at least one, quantity > 0.\nproductionOrderId and remarks are optional.\nbatchId is required for every item."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Material Issues",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/material-issues",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "material-issues"
+                  ],
+                  "query": [
+                    {
+                      "key": "warehouseId",
+                      "value": "{{warehouseId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "DRAFT",
+                      "description": "DRAFT | ISSUED | CANCELLED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "issueNumber",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Optional filters: warehouseId, status, search."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Material Issue By Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/material-issues/{{materialIssueId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "material-issues",
+                    "{{materialIssueId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Issue Material",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/material-issues/{{materialIssueId}}/issue",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "material-issues",
+                    "{{materialIssueId}}",
+                    "issue"
+                  ]
+                },
+                "description": "Confirms the DRAFT issue and deducts stock. No body."
+              },
+              "response": []
+            }
+          ],
+          "description": "Issue raw material from a warehouse to production.\nFlow: Create (DRAFT) > Issue (ISSUED, stock deducted). Create saves materialIssueId."
+        },
+        {
+          "name": "Work Order",
+          "item": [
+            {
+              "name": "Create Work Order",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// save new workOrderId",
+                      "const res = pm.response.json();",
+                      "if (res.data && res.data._id) {",
+                      "    pm.collectionVariables.set(\"workOrderId\", res.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/production/work-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "work-orders"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"productionOrderId\": \"{{productionOrderId}}\",\n  \"operationName\": \"Cutting\",\n  \"sequence\": 1,\n  \"targetQuantity\": 10,\n  \"remarks\": \"Cut the teak planks\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "OWNER / MANAGER only. assignedTo and startDate optional. Saves workOrderId."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Work Orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/work-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "work-orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "PENDING",
+                      "description": "PENDING | IN_PROGRESS | COMPLETED | CANCELLED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "productionOrderId",
+                      "value": "{{productionOrderId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Optional filters: status, productionOrderId, search."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Work Order By Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/work-orders/{{workOrderId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "work-orders",
+                    "{{workOrderId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Start Work Order",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/work-orders/{{workOrderId}}/start",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "work-orders",
+                    "{{workOrderId}}",
+                    "start"
+                  ]
+                },
+                "description": "No body."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Work Order Progress",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/production/work-orders/{{workOrderId}}/progress",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "work-orders",
+                    "{{workOrderId}}",
+                    "progress"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"completedQuantity\": 5,\n  \"status\": \"IN_PROGRESS\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "status optional: PENDING | IN_PROGRESS | COMPLETED | CANCELLED"
+              },
+              "response": []
+            },
+            {
+              "name": "Cancel Work Order",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/production/work-orders/{{workOrderId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "production",
+                    "work-orders",
+                    "{{workOrderId}}",
+                    "cancel"
+                  ]
+                },
+                "description": "No body."
+              },
+              "response": []
+            }
+          ],
+          "description": "Work orders (steps) of a production order."
+        }
+      ],
+      "description": "Production module."
+    },
+    {
+      "name": "adjustment",
+      "item": [
+        {
+          "name": "create adjustment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"warehouseId\": \"6acb30b39f2403aa82363d58\",\r\n  \"items\": [\r\n    { \"itemId\": \"6acb30b39f2403aa82363d5a\", \"batchId\": \"{{batchId}}\", \"physicalQuantity\": 4850 },\r\n    { \"itemId\": \"6acb30b39f2403aa82363d5b\", \"batchId\": \"{{batchId2}}\", \"physicalQuantity\": 2850 }\r\n  ],\r\n  \"reason\": \"COUNT_MISMATCH\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/adjustments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "adjustments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get all adjustments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/adjustments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "adjustments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get single adjustment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/adjustments/6acfa2a21ed683ab97ee8aca",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "adjustments",
+                "6acfa2a21ed683ab97ee8aca"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "approve adjustment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/adjustments/6acfa2a21ed683ab97ee8aca/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "adjustments",
+                "6acfa2a21ed683ab97ee8aca",
+                "approve"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "canncel adjustment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/adjustments/6acf1deb54193d151b09f246/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "adjustments",
+                "6acf1deb54193d151b09f246",
+                "cancel"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "apply adjustment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/adjustments/6acfa2a21ed683ab97ee8aca/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "adjustments",
+                "6acfa2a21ed683ab97ee8aca",
+                "apply"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "scraps",
+      "item": [
+        {
+          "name": "create scraps",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// save new scrapId",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set(\"scrapId\", res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/scraps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "scraps"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"items\": [\n    {\n      \"itemId\": \"{{itemId}}\",\n      \"batchId\": \"{{batchId}}\",\n      \"quantity\": 2,\n      \"reason\": \"DAMAGE\"\n    }\n  ],\n  \"remarks\": \"Damaged during handling\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "reason: DAMAGE | OFFCUT | PRODUCTION_WASTE | DEFECTIVE | EXPIRED | OTHER\nSame item with same batch can not be added twice. Saves scrapId."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// add organization header to every request (if organizationId is set)",
+          "const orgId = pm.collectionVariables.get(\"organizationId\");",
+          "if (orgId) {",
+          "    pm.request.headers.upsert({ key: \"x-organization-id\", value: orgId });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1"
+    },
+    {
+      "key": "email",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "organizationId",
+      "value": ""
+    },
+    {
+      "key": "memberId",
+      "value": ""
+    },
+    {
+      "key": "warehouseId",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "itemId",
+      "value": ""
+    },
+    {
+      "key": "fromWarehouseId",
+      "value": ""
+    },
+    {
+      "key": "toWarehouseId",
+      "value": ""
+    },
+    {
+      "key": "transferId",
+      "value": ""
+    },
+    {
+      "key": "itemId2",
+      "value": ""
+    },
+    {
+      "key": "goodsReceiptId",
+      "value": ""
+    },
+    {
+      "key": "materialIssueId",
+      "value": ""
+    },
+    {
+      "key": "supplierId",
+      "value": ""
+    },
+    {
+      "key": "purchaseOrderId",
+      "value": ""
+    },
+    {
+      "key": "batchId",
+      "value": ""
+    },
+    {
+      "key": "batchId2",
+      "value": ""
+    },
+    {
+      "key": "qualityInspectionId",
+      "value": ""
+    },
+    {
+      "key": "scrapId",
+      "value": ""
+    },
+    {
+      "key": "finishedItemId",
+      "value": ""
+    },
+    {
+      "key": "bomId",
+      "value": ""
+    },
+    {
+      "key": "productionOrderId",
+      "value": ""
+    },
+    {
+      "key": "workOrderId",
+      "value": ""
+    }
+  ]
+}

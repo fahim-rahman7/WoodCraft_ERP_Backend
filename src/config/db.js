@@ -1,8 +1,10 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 export const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/woodcraft_erp');
+    const conn = await mongoose.connect(
+      process.env.MONGO_URI || "mongodb://127.0.0.1:27017/woodcraft_erp",
+    );
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`DB Connection Error: ${error.message}`);

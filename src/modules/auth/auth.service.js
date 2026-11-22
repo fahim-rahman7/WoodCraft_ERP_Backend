@@ -1,8 +1,9 @@
 import argon2 from "argon2";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { User } from "./auth.model.js";
 import { AppError } from "../../utils/appError.js";
-import { sendOTP } from "../../utils/sendEmail.js";
+import { sendOTP, sendResetPasswordEmail } from "../../utils/sendEmail.js";
 
 const generateAccessToken = (user) => {
   return jwt.sign(
@@ -83,6 +84,7 @@ export const registerUser = async ({ name, email, password }) => {
     otp,
     otpExpires,
   });
+
   try {
     await sendOTP(email, otp);
   } catch (error) {
@@ -148,4 +150,63 @@ export const refreshAccessToken = async (token) => {
 
 export const logoutUser = async (userId) => {
   await User.findByIdAndUpdate(userId, { refreshToken: null });
+};
+
+export const forgetPassword = async ({ email }) => {
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const resetPassToken = crypto.randomBytes(32).toString("hex");
+
+  const resetPassTokenExpires = new Date(Date.now() + 15 * 60 * 1000); //15 mins
+
+  user.resetPassToken = resetPassToken;
+  user.resetPassTokenExpires = resetPassTokenExpires;
+
+  // validateBeforeSave: false দেওয়ার কারণ হলো পাসওয়ার্ড বা অন্য ফিল্ড যেন আবার ভ্যালিডেশন ফেস না করে
+  await user.save({ validateBeforeSave: false });
+
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetPassToken}`;
+
+  try {
+    await sendResetPasswordEmail(email, resetUrl);
+  } catch (error) {
+    user.resetPassToken = null;
+    user.resetPassTokenExpires = null;
+    await user.save({ validateBeforeSave: false });
+
+    throw new AppError("Email could not be sent. Please try again later", 500);
+  }
+
+  return {
+    success: true,
+    message: "Password reset link sent to email successfully",
+  };
+};
+
+export const resetPassword = async ( token, newPassword ) => {
+  const user = await User.findOne({
+    resetPassToken: token,
+    resetPassTokenExpires: { $gt: new Date() },
+  });
+
+  if (!user) {
+    throw new AppError("Invalid or expired reset token", 400);
+  }
+
+  const hashedPassword = await argon2.hash(newPassword);
+
+  user.password = hashedPassword;
+  user.resetPassToken = null;
+  user.resetPassTokenExpires = null;
+
+  await user.save();
+
+  return {
+    success: true,
+    message: "Password reset successfull. Use your new password to login",
+  };
 };

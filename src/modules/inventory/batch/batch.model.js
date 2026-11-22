@@ -24,11 +24,6 @@ const batchSchema = new Schema(
       ref: 'Supplier',
       required: false,
     },
-    warehouseId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Warehouse',
-      required: true,
-    },
     initialQuantity: {
       type: Number,
       required: true,

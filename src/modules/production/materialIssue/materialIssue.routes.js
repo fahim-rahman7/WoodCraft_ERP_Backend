@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { protect } from '../../../middlewares/auth.middleware.js';
-import { requireOrgContext } from '../../../middlewares/org.middleware.js';
+import { checkOrgRole, requireOrgContext } from '../../../middlewares/org.middleware.js';
 import { validate } from '../../../middlewares/validate.middleware.js';
 import * as materialIssueController from './materialIssue.controller.js';
 import { createMaterialIssueSchema } from './materialIssue.validation.js';
 
 const router = Router();
 
-router.use(protect, requireOrgContext);
+router.use(protect, requireOrgContext,checkOrgRole("OWNER", "MANAGER"));
 
 router
   .route('/')

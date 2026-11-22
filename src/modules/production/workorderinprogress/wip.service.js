@@ -53,11 +53,7 @@ const getProductionOrderOrFail = async (organizationId, productionOrderId) => {
   return productionOrder;
 };
 
-/**
- * Work Order-এর completedQuantity ধাপে ধাপে Sync করা হয় WIP progress-এর সাথে।
- * Conditional pipeline update ব্যবহার করা হয়েছে যাতে concurrent update-এ
- * target quantity কখনোও overshoot না করে।
- */
+
 const syncWorkOrderProgress = async (
   organizationId,
   workOrder,
